@@ -66,6 +66,27 @@ export async function GET(req: NextRequest) {
         const cycle = await tradingBot.runCycle()
         return NextResponse.json(cycle)
 
+      case 'cron':
+        // Scheduled cron cycle — auto-trade every 5 minutes
+        console.log(`[CRON] Running scheduled cycle at ${new Date().toISOString()}`)
+        try {
+          const cronResult = await tradingBot.runCycle()
+          const cronStats = riskManager.getPortfolioStats()
+          const cronPositions = riskManager.getOpenPositions()
+          return NextResponse.json({
+            success: true,
+            timestamp: new Date().toISOString(),
+            cycle: cronResult,
+            portfolio: cronStats,
+            openPositions: Array.from(cronPositions.entries()).map(([sym, pos]) => ({
+              ...pos,
+              symbol: pos.symbol || sym,
+            })),
+          })
+        } catch (err: any) {
+          return NextResponse.json({ success: false, error: err.message })
+        }
+
       case 'config':
         const configModule = await import('@/lib/config')
         return NextResponse.json({
