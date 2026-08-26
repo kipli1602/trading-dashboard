@@ -18,9 +18,11 @@ class BinanceAPI {
     this.apiKey = apiKey
     this.apiSecret = apiSecret
     this.isTestnet = isTestnet
+    // v2: removed /api suffix to fix double-path issue
     this.baseURL = isTestnet
       ? 'https://testnet.binance.vision'
       : 'https://api.binance.com'
+    console.log(`[BinanceAPI] v2 init: testnet=${isTestnet}, baseURL=${this.baseURL}`)
   }
 
   // Generate HMAC SHA256 signature
