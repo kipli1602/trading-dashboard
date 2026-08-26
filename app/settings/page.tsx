@@ -20,11 +20,26 @@ export default function SettingsPage() {
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
 
+  // Load config from localStorage on mount
+  useEffect(() => {
+    const savedConfig = localStorage.getItem('bot-config')
+    if (savedConfig) {
+      setConfig(JSON.parse(savedConfig))
+    }
+  }, [])
+
   const handleSave = async () => {
     setSaving(true)
     try {
       await new Promise(r => setTimeout(r, 800))
+      // Save to localStorage (for persistence in browser)
       localStorage.setItem('bot-config', JSON.stringify(config))
+      // Also save to backend API
+      await fetch('/api/bot', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'save-config', config }),
+      }).catch(() => {})
       setSaved(true)
       setTimeout(() => setSaved(false), 3000)
     } finally {

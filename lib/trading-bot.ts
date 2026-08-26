@@ -18,6 +18,7 @@ export class TradingBot {
   private isRunning: boolean = false
   private config = DEFAULT_BOT_CONFIG
   private intervalId: any = null
+  private checkInterval: number = 300
 
   constructor(useMock: boolean = true, apiKey?: string, apiSecret?: string) {
     if (useMock) {
@@ -28,6 +29,39 @@ export class TradingBot {
 
     this.aiEngine = new AISignalEngine(this.config.strategyWeights)
     this.riskMgr = riskManager
+  }
+
+  // Update bot configuration at runtime
+  updateConfig(newConfig: any): void {
+    if (newConfig.apiKey || newConfig.apiSecret) {
+      const useMock = !newConfig.useTestnet && (!newConfig.enableTrading || !newConfig.apiKey)
+      if (useMock) {
+        this.binance = new MockBinanceAPI()
+      } else {
+        this.binance = new BinanceAPI(newConfig.apiKey || '', newConfig.apiSecret || '', newConfig.useTestnet || false)
+      }
+    }
+    if (newConfig.checkInterval !== undefined) this.checkInterval = newConfig.checkInterval
+    if (newConfig.maxOpenPositions !== undefined) this.config.maxPairs = newConfig.maxOpenPositions
+    if (newConfig.maxPositionPerPair !== undefined) this.config.maxPositionPerPair = newConfig.maxPositionPerPair
+    if (newConfig.dailyLossLimit !== undefined) this.config.dailyLossLimit = newConfig.dailyLossLimit
+    if (newConfig.pairs !== undefined) this.config.enabledPairs = newConfig.pairs
+    if (newConfig.useTestnet !== undefined) this.config.testnet = newConfig.useTestnet
+    if (newConfig.apiKey !== undefined) this.config.apiKey = newConfig.apiKey
+    if (newConfig.apiSecret !== undefined) this.config.apiSecret = newConfig.apiSecret
+    console.log('Bot config updated')
+  }
+
+  // Get current configuration
+  getConfig(): any {
+    return {
+      config: this.config,
+      isRunning: this.isRunning,
+      checkInterval: this.checkInterval,
+      apiKey: this.config.apiKey || '',
+      apiSecret: this.config.apiSecret || '',
+      useTestnet: this.config.testnet,
+    }
   }
 
   // Start the bot

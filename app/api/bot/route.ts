@@ -114,6 +114,15 @@ export async function POST(req: NextRequest) {
         const data = await tradingBot.getPriceData(symbol, dataInterval || '1h', limit || 200)
         return NextResponse.json(data)
 
+      case 'save-config':
+        if (body.config) {
+          tradingBot.updateConfig(body.config)
+        }
+        return NextResponse.json({ success: true, message: 'Config saved' })
+
+      case 'get-config':
+        return NextResponse.json({ config: tradingBot.getConfig() })
+
       default:
         return NextResponse.json({ error: 'Unknown action' }, { status: 400 })
     }
