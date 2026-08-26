@@ -67,6 +67,16 @@ class BinanceAPI {
     return parseFloat(res.data.price)
   }
 
+  // Get all prices
+  async getAllPrices(): Promise<Record<string, number>> {
+    const symbols = ['BTCUSDT', 'ETHUSDT', 'ADAUSDT', 'XRPUSDT', 'DOGEUSDT', 'LINKUSDT', 'SOLUSDT', 'BNBUSDT', 'AVAXUSDT']
+    const prices: Record<string, number> = {}
+    for (const sym of symbols) {
+      try { prices[sym] = await this.getPrice(sym) } catch { prices[sym] = 0 }
+    }
+    return prices
+  }
+
   // Get 24h price stats
   async get24hStats(symbol: string): Promise<any> {
     const res = await axios.get(`${this.baseURL}/api/v3/ticker/24hr`, {

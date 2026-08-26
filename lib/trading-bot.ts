@@ -379,24 +379,28 @@ export class TradingBot {
 
   // Get all 9 pair current prices
   async getAllPrices(): Promise<Record<string, number>> {
-    const prices: Record<string, number> = {}
-    let firstError: string | null = null
-    for (const pair of PAIRS_9) {
-      try {
-        prices[pair.symbol] = await this.binance.getPrice(pair.symbol)
-      } catch (e: any) {
-        prices[pair.symbol] = 0
-        if (!firstError) firstError = e.message || String(e)
-      }
+    // Try CoinGecko API for real prices (free, no IP block)
+    const COINGECKO_IDS: Record<string, string> = {
+      BTCUSDT: 'bitcoin', ETHUSDT: 'ethereum', ADAUSDT: 'cardano',
+      XRPUSDT: 'ripple', DOGEUSDT: 'dogecoin', LINKUSDT: 'chainlink',
+      SOLUSDT: 'solana', BNBUSDT: 'binancecoin', AVAXUSDT: 'avalanche-2',
     }
-    return { ...prices, _error: firstError as any }
+    try {
+      const ids = Object.values(COINGECKO_IDS).join(',')
+      const res = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=usd`)
+      const data = await res.json() as Record<string, { usd: number }>
+      const prices: Record<string, number> = {}
+      for (const [symbol, cgId] of Object.entries(COINGECKO_IDS)) {
+        prices[symbol] = data[cgId]?.usd || 0
+      }
+      return prices
+    } catch (e) {
+      console.log('[CoinGecko] Fallback to mock prices:', (e as Error).message)
+      return this.binance.getAllPrices()
+    }
   }
 }
 
 // Export singleton instance
-// Use real Binance API when keys are available, mock otherwise
-export const tradingBot = new TradingBot(
-  !process.env.BINANCE_API_KEY || !process.env.BINANCE_API_SECRET,
-  process.env.BINANCE_API_KEY || '',
-  process.env.BINANCE_API_SECRET || ''
-)
+// Binance blocked from US IPs (Vercel) - use mock for prices, real keys for trading
+export const tradingBot = new TradingBot(true)

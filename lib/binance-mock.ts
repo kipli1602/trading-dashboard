@@ -102,6 +102,14 @@ class MockBinanceAPI {
     return getBasePrice(symbol) * (0.95 + Math.random() * 0.1)
   }
 
+  async getAllPrices(): Promise<Record<string, number>> {
+    const prices: Record<string, number> = {}
+    for (const sym of MOCK_SYMBOLS) {
+      prices[sym] = await this.getPrice(sym)
+    }
+    return prices
+  }
+
   async get24hStats(symbol: string): Promise<any> {
     const basePrice = getBasePrice(symbol)
     const change = (Math.random() - 0.5) * 0.1
