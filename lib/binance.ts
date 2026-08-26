@@ -19,8 +19,8 @@ class BinanceAPI {
     this.apiSecret = apiSecret
     this.isTestnet = isTestnet
     this.baseURL = isTestnet
-      ? 'https://testnet.binance.vision/api'
-      : 'https://api.binance.com/api'
+      ? 'https://testnet.binance.vision'
+      : 'https://api.binance.com'
   }
 
   // Generate HMAC SHA256 signature
