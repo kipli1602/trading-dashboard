@@ -13,16 +13,17 @@ class BinanceAPI {
   private apiSecret: string
   private isTestnet: boolean
   private baseURL: string
+  private tradeURL: string
 
   constructor(apiKey: string, apiSecret: string, isTestnet: boolean = false) {
     this.apiKey = apiKey
     this.apiSecret = apiSecret
     this.isTestnet = isTestnet
-    // v2: removed /api suffix to fix double-path issue
-    this.baseURL = isTestnet
-      ? 'https://testnet.binance.vision'
-      : 'https://api.binance.com'
-    console.log(`[BinanceAPI] v2 init: testnet=${isTestnet}, baseURL=${this.baseURL}`)
+    // v3: use mainnet for price data (public, no auth needed)
+    // testnet blocked from US IPs (error 451)
+    this.baseURL = 'https://api.binance.com'
+    this.tradeURL = isTestnet ? 'https://testnet.binance.vision' : 'https://api.binance.com'
+    console.log(`[BinanceAPI] v3 init: testnet=${isTestnet}, priceURL=${this.baseURL}, tradeURL=${this.tradeURL}`)
   }
 
   // Generate HMAC SHA256 signature
@@ -45,7 +46,7 @@ class BinanceAPI {
     const queryString = `timestamp=${timestamp}`
     const signature = this.sign(queryString)
 
-    const res = await axios.get(`${this.baseURL}/api/v3/account`, {
+    const res = await axios.get(`${this.tradeURL}/api/v3/account`, {
       headers: { 'X-MBX-APIKEY': this.apiKey },
       params: { timestamp, signature },
     })
@@ -122,7 +123,7 @@ class BinanceAPI {
       .map(([k, v]) => `${k}=${v}`)
       .join('&'))
 
-    const res = await axios.post(`${this.baseURL}/api/v3/order`, null, {
+    const res = await axios.post(`${this.tradeURL}/api/v3/order`, null, {
       headers: { 'X-MBX-APIKEY': this.apiKey },
       params: { ...params, signature },
     })
@@ -155,7 +156,7 @@ class BinanceAPI {
       .map(([k, v]) => `${k}=${v}`)
       .join('&'))
 
-    const res = await axios.post(`${this.baseURL}/api/v3/order/oco`, null, {
+    const res = await axios.post(`${this.tradeURL}/api/v3/order/oco`, null, {
       headers: { 'X-MBX-APIKEY': this.apiKey },
       params: { ...params, signature },
     })
@@ -171,7 +172,7 @@ class BinanceAPI {
       .map(([k, v]) => `${k}=${v}`)
       .join('&'))
 
-    const res = await axios.delete(`${this.baseURL}/api/v3/order`, {
+    const res = await axios.delete(`${this.tradeURL}/api/v3/order`, {
       headers: { 'X-MBX-APIKEY': this.apiKey },
       params: { ...params, signature },
     })
