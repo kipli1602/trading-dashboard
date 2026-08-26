@@ -1,14 +1,6 @@
 {
   "version": 2,
   "env": {
-    "USE_TESTNET": "true",
-    "BINANCE_API_KEY": "",
-    "BINANCE_API_SECRET": ""
-  },
-  "crons": [
-    {
-      "path": "/api/bot?action=cron",
-      "schedule": "*/5 * * * *"
-    }
-  ]
+    "USE_TESTNET": "true"
+  }
 }
