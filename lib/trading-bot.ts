@@ -24,7 +24,7 @@ export class TradingBot {
     if (useMock) {
       this.binance = new MockBinanceAPI()
     } else {
-      this.binance = new BinanceAPI(apiKey || '', apiSecret || '', false)
+      this.binance = new BinanceAPI(apiKey || '', apiSecret || '', process.env.USE_TESTNET === 'true')
     }
 
     this.aiEngine = new AISignalEngine(this.config.strategyWeights)
@@ -391,5 +391,10 @@ export class TradingBot {
   }
 }
 
-// Export singleton instance (uses mock API for demo)
-export const tradingBot = new TradingBot(true)
+// Export singleton instance
+// Use real Binance API when keys are available, mock otherwise
+export const tradingBot = new TradingBot(
+  !process.env.BINANCE_API_KEY || !process.env.BINANCE_API_SECRET,
+  process.env.BINANCE_API_KEY || '',
+  process.env.BINANCE_API_SECRET || ''
+)
