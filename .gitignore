@@ -42,3 +42,5 @@ build_error.txt
 
 # npm cache
 .npm/
+
+.vercel

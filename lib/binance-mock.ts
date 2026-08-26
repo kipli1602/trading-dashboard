@@ -99,11 +99,11 @@ class MockBinanceAPI {
   }
 
   async getPrice(symbol: string): Promise<number> {
-    return getBasePrice(symbol.replace('USDT', '')) * (0.95 + Math.random() * 0.1)
+    return getBasePrice(symbol) * (0.95 + Math.random() * 0.1)
   }
 
   async get24hStats(symbol: string): Promise<any> {
-    const basePrice = getBasePrice(symbol.replace('USDT', ''))
+    const basePrice = getBasePrice(symbol)
     const change = (Math.random() - 0.5) * 0.1
     return {
       priceChangePercent: (change * 100).toFixed(2),
