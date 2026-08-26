@@ -380,14 +380,16 @@ export class TradingBot {
   // Get all 9 pair current prices
   async getAllPrices(): Promise<Record<string, number>> {
     const prices: Record<string, number> = {}
+    let firstError: string | null = null
     for (const pair of PAIRS_9) {
       try {
         prices[pair.symbol] = await this.binance.getPrice(pair.symbol)
-      } catch (e) {
+      } catch (e: any) {
         prices[pair.symbol] = 0
+        if (!firstError) firstError = e.message || String(e)
       }
     }
-    return prices
+    return { ...prices, _error: firstError as any }
   }
 }
 
