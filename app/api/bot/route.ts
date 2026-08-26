@@ -15,7 +15,17 @@ export async function GET(req: NextRequest) {
 
       case 'prices':
         const prices = await tradingBot.getAllPrices()
-        return NextResponse.json(prices)
+        return NextResponse.json({ prices, debug: { hasApiKey: !!process.env.BINANCE_API_KEY, hasSecret: !!process.env.BINANCE_API_SECRET, useTestnet: process.env.USE_TESTNET } })
+
+      case 'debug':
+        return NextResponse.json({
+          hasApiKey: !!process.env.BINANCE_API_KEY,
+          apiKeyLen: (process.env.BINANCE_API_KEY || '').length,
+          hasSecret: !!process.env.BINANCE_API_SECRET,
+          useTestnet: process.env.USE_TESTNET,
+          status: tradingBot.getStatus(),
+          version: 'v3-baseurl-fix',
+        })
 
       case 'pair-stats':
         // Get price + 24h stats for all 9 pairs
