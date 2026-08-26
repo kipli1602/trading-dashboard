@@ -1,0 +1,36 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "package.json",
+      "use": "nodejs",
+      "config": {
+        "includeFiles": ["next.config.mjs", "next.config.js", "tailwind.config.js", "postcss.config.js"]
+      }
+    }
+  ],
+  "routes": [
+    {
+      "src": "/(api/.*)",
+      "dest": "/$1"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/$1"
+    }
+  ],
+  "env": {
+    "USE_TESTNET": "true",
+    "BINANCE_API_KEY": "",
+    "BINANCE_API_SECRET": ""
+  },
+  "function": {
+    "maxDuration": 30
+  },
+  "crons": [
+    {
+      "path": "/api/bot?action=signal",
+      "schedule": "@every 5m"
+    }
+  ]
+}

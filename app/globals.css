@@ -1,0 +1,49 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-dark-bg text-gray-100 antialiased;
+  }
+  ::-webkit-scrollbar {
+    width: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: #1a1d29;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #2a2e3a;
+    border-radius: 3px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #3b4250;
+  }
+}
+
+@layer components {
+  .glass-card {
+    @apply bg-dark-card/90 backdrop-blur-sm border border-dark-border rounded-xl;
+  }
+  .profit-text {
+    @apply text-profit;
+  }
+  .loss-text {
+    @apply text-loss;
+  }
+  .status-dot {
+    @apply w-2 h-2 rounded-full inline-block mr-2;
+  }
+  .status-online {
+    @apply bg-profit shadow-lg shadow-profit/50;
+  }
+  .status-offline {
+    @apply bg-loss shadow-lg shadow-loss/50;
+  }
+}
+
+@layer utilities {
+  .animate-pulse-slow {
+    animation: pulse 3s linear infinite;
+  }
+}
