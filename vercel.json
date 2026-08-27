@@ -2,5 +2,11 @@
   "version": 2,
   "env": {
     "USE_TESTNET": "true"
-  }
+  },
+  "crons": [
+    {
+      "path": "/api/bot?action=cron",
+      "schedule": "*/5 * * * *"
+    }
+  ]
 }

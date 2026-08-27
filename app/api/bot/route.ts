@@ -15,16 +15,18 @@ export async function GET(req: NextRequest) {
 
       case 'prices':
         const prices = await tradingBot.getAllPrices()
-        return NextResponse.json({ prices, debug: { hasApiKey: !!process.env.BINANCE_API_KEY, hasSecret: !!process.env.BINANCE_API_SECRET, useTestnet: process.env.USE_TESTNET } })
+        return NextResponse.json(prices)
 
       case 'debug':
+        const hasBybit = !!process.env.BYBIT_API_KEY && !!process.env.BYBIT_API_SECRET
+        const hasBinance = !!process.env.BINANCE_API_KEY && !!process.env.BINANCE_API_SECRET
         return NextResponse.json({
-          hasApiKey: !!process.env.BINANCE_API_KEY,
-          apiKeyLen: (process.env.BINANCE_API_KEY || '').length,
-          hasSecret: !!process.env.BINANCE_API_SECRET,
+          apiMode: hasBybit ? 'bybit-real-trading' : (hasBinance ? 'binance-real-trading' : 'mock'),
+          hasBybitKey: !!(process.env.BYBIT_API_KEY && process.env.BYBIT_API_SECRET),
+          hasBinanceKey: !!(process.env.BINANCE_API_KEY && process.env.BINANCE_API_SECRET),
+          apiKeyLen: (process.env.BYBIT_API_KEY || process.env.BINANCE_API_KEY || '').length,
           useTestnet: process.env.USE_TESTNET,
           status: tradingBot.getStatus(),
-          version: 'v3-baseurl-fix',
         })
 
       case 'pair-stats':
