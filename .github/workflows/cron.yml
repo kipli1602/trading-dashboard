@@ -1,0 +1,23 @@
+name: 24/7 Bot Cron
+
+on:
+  schedule:
+    # Run every 5 minutes, 24/7
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
+    # Manual trigger for testing
+
+jobs:
+  cron:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger bot cron cycle
+        run: |
+          RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" \
+            "https://trading-dashboard-kipli.vercel.app/api/bot?action=cron")
+          if [ "$RESPONSE" == "200" ]; then
+            echo "✅ Bot cron cycle triggered successfully"
+          else
+            echo "❌ Bot cron failed with status: $RESPONSE"
+            exit 1
+          fi
