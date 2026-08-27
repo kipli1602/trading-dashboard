@@ -1,5 +1,6 @@
 import BinanceAPI from '@/lib/binance'
 import MockBinanceAPI from '@/lib/binance-mock'
+import BybitAPI from '@/lib/bybit-mock'
 import AISignalEngine from '@/lib/ai-signal'
 import { RiskManager, riskManager } from '@/lib/risk-manager'
 import { DEFAULT_BOT_CONFIG, RISK_CONFIG } from '@/lib/config'
@@ -12,7 +13,7 @@ import { PAIRS_9 } from '@/lib/config'
 // Menggabungkan: Data fetching + AI signals + Risk management + Auto execution
 
 export class TradingBot {
-  private binance: BinanceAPI | MockBinanceAPI
+  private binance: BinanceAPI | MockBinanceAPI | BybitAPI
   private aiEngine: AISignalEngine
   private riskMgr: RiskManager
   private isRunning: boolean = false
@@ -22,9 +23,11 @@ export class TradingBot {
 
   constructor(useMock: boolean = true, apiKey?: string, apiSecret?: string) {
     if (useMock) {
+      // Use mock for dev/testing, CoinGecko for real prices
       this.binance = new MockBinanceAPI()
     } else {
-      this.binance = new BinanceAPI(apiKey || '', apiSecret || '', process.env.USE_TESTNET === 'true')
+      // Use Bybit for real trading (works from any IP, unlike Binance)
+      this.binance = new BybitAPI(apiKey || '', apiSecret || '')
     }
 
     this.aiEngine = new AISignalEngine(this.config.strategyWeights)
@@ -402,5 +405,9 @@ export class TradingBot {
 }
 
 // Export singleton instance
-// Binance blocked from US IPs (Vercel) - use mock for prices, real keys for trading
-export const tradingBot = new TradingBot(true)
+// Use Bybit API for real trading (Bybit not blocked like Binance from US IPs)
+export const tradingBot = new TradingBot(
+  !process.env.BYBIT_API_KEY || !process.env.BYBIT_API_SECRET,
+  process.env.BYBIT_API_KEY || process.env.BINANCE_API_KEY || '',
+  process.env.BYBIT_API_SECRET || process.env.BINANCE_API_SECRET || ''
+)
