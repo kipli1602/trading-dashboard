@@ -23,15 +23,32 @@ class BybitAPI {
     this.apiSecret = apiSecret
   }
 
-  // Get real price from Bybit public API (no auth needed)
+  // Get real price - tries Bybit, falls back to CoinGecko
   async getPrice(symbol: string): Promise<number> {
     const bybitSymbol = BYBIT_SYMBOLS[symbol] || symbol
-    const res = await fetch(`${BYBIT_BASE}/v5/market/tickers?category=spot&symbol=${bybitSymbol}`)
-    const data = await res.json()
-    if (data.retCode === 0 && data.result?.list?.[0]?.lastPrice) {
-      return parseFloat(data.result.list[0].lastPrice)
+    try {
+      const res = await fetch(`${BYBIT_BASE}/v5/market/tickers?category=spot&symbol=${bybitSymbol}`, {
+        headers: { 'Accept-Encoding': 'identity' },
+      })
+      const text = await res.text()
+      if (text.includes('CloudFront') || text.includes('blocked')) {
+        throw new Error('Bybit geo-blocked, falling back to CoinGecko')
+      }
+      const data = JSON.parse(text)
+      if (data.retCode === 0 && data.result?.list?.[0]?.lastPrice) {
+        return parseFloat(data.result.list[0].lastPrice)
+      }
+      throw new Error(data.retMsg || 'Price fetch failed')
+    } catch (e) {
+      // Fallback: CoinGecko price
+      const coinId = this.COINGECKO_IDS[symbol]
+      if (!coinId) throw new Error(`No mapping for ${symbol}`)
+      const res2 = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${coinId}&vs_currencies=usd`)
+      const data2 = await res2.json() as Record<string, { usd: number }>
+      const price = data2[coinId]?.usd
+      if (!price) throw new Error(`CoinGecko price fetch failed for ${symbol}`)
+      return price
     }
-    throw new Error(`Price fetch failed: ${data?.retMsg || 'unknown'}`)
   }
 
   // Get all prices via CoinGecko (already working on Vercel)
@@ -57,26 +74,54 @@ class BybitAPI {
     // Convert interval: Binance '1h' -> Bybit '60'
     const bybitInterval = interval.replace(/h$/, '')
     const safeLimit = Math.min(limit, 200) // Bybit V5 max = 200
-    const res = await fetch(`${BYBIT_BASE}/v5/market/kline?category=spot&symbol=${bybitSymbol}&interval=${bybitInterval}&limit=${safeLimit}`, {
-      headers: { 'Accept-Encoding': 'identity' },
-    })
-    const text = await res.text()
-    let data: any
-    try {
-      data = JSON.parse(text)
-    } catch (e) {
-      throw new Error(`JSON parse error for ${symbol}: ${text.substring(0, 100)}`)
-    }
-    if (data.retCode !== 0 || !data.result?.list) throw new Error(data.retMsg || 'Klines fetch failed')
 
-    return data.result.list.reverse().map((k: any) => ({
-      timestamp: parseInt(k[0]), // Bybit V5 uses array format
-      open: parseFloat(k[1]),
-      high: parseFloat(k[2]),
-      low: parseFloat(k[3]),
-      close: parseFloat(k[4]),
-      volume: parseFloat(k[5]),
-    }))
+    try {
+      const res = await fetch(`${BYBIT_BASE}/v5/market/kline?category=spot&symbol=${bybitSymbol}&interval=${bybitInterval}&limit=${safeLimit}`, {
+        headers: { 'Accept-Encoding': 'identity' },
+      })
+      const text = await res.text()
+      let data: any
+      try {
+        data = JSON.parse(text)
+      } catch (e) {
+        throw new Error(`JSON parse error for ${symbol}: ${text.substring(0, 100)}`)
+      }
+      if (data.retCode !== 0 || !data.result?.list) throw new Error(data.retMsg || 'Klines fetch failed')
+
+      return data.result.list.reverse().map((k: any) => ({
+        timestamp: parseInt(k[0]),
+        open: parseFloat(k[1]),
+        high: parseFloat(k[2]),
+        low: parseFloat(k[3]),
+        close: parseFloat(k[4]),
+        volume: parseFloat(k[5]),
+      }))
+    } catch (e) {
+      // Bybit geo-blocked from US IPs (Vercel) - fallback to CoinGecko OHLC
+      return this.coingeckoOHLC(symbol)
+    }
+  }
+
+  // Fallback: Get OHLC from CoinGecko (works from any IP)
+  private COINGECKO_IDS: Record<string, string> = {
+    BTCUSDT: 'bitcoin', ETHUSDT: 'ethereum', ADAUSDT: 'cardano',
+    XRPUSDT: 'ripple', DOGEUSDT: 'dogecoin', LINKUSDT: 'chainlink',
+    SOLUSDT: 'solana', BNBUSDT: 'binancecoin', AVAXUSDT: 'avalanche-2',
+  }
+
+  async coingeckoOHLC(symbol: string): Promise<PriceData[]> {
+    const coinId = this.COINGECKO_IDS[symbol]
+    if (!coinId) throw new Error(`No CoinGecko mapping for ${symbol}`)
+    const res = await fetch(`https://api.coingecko.com/api/v3/coins/${coinId}/ohlc?vs_currency=usd&days=30`)
+    const data = await res.json() as [number, number, number, number, number][][]
+    return data.map((candle: any[]) => ({
+      timestamp: candle[0],
+      open: candle[1],
+      high: candle[2],
+      low: candle[3],
+      close: candle[4],
+      volume: 0, // CoinGecko OHLC doesn't include volume
+    })).reverse()
   }
 
   // Get 24h stats
