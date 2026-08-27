@@ -94,9 +94,11 @@ export async function GET(req: NextRequest) {
               ...pos,
               symbol: pos.symbol || sym,
             })),
+            signalCount: cronResult.signals.length,
+            pairCount: cronResult.signals.length, // signals processed
           })
         } catch (err: any) {
-          return NextResponse.json({ success: false, error: err.message })
+          return NextResponse.json({ success: false, error: err.message, stack: err.stack })
         }
 
       case 'config':
