@@ -107,8 +107,11 @@ export class TradingBot {
     signals: Signal[]
     positions: Position[]
     stats: any
+    pairCount?: number
+    errors?: string[]
   }> {
     console.log(`[${new Date().toISOString()}] Running trading cycle...`)
+    const errors: string[] = []
 
     // Step 1: Fetch price data for all 9 pairs
     const pairData = new Map<string, PriceData[]>()
@@ -123,9 +126,11 @@ export class TradingBot {
         )
         if (data && data.length > 0) {
           pairData.set(pairConfig.symbol, data)
+        } else {
+          errors.push(`${pairConfig.symbol}: no klines data returned`)
         }
-      } catch (e) {
-        console.error(`Failed to get data for ${pairConfig.symbol}`, e)
+      } catch (e: any) {
+        errors.push(`${pairConfig.symbol}: ${e.message || 'fetch failed'}`)
       }
     }
 
@@ -170,6 +175,8 @@ export class TradingBot {
       signals,
       positions: this.riskMgr.getAllPositions(),
       stats,
+      pairCount: pairData.size,
+      errors: errors.length > 0 ? errors : undefined,
     }
   }
 
