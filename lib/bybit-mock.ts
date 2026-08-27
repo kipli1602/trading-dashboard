@@ -103,7 +103,7 @@ class BybitAPI {
   }
 
   // Fallback: Get OHLC from CoinGecko (works from any IP)
-  private COINGECKO_IDS: Record<string, string> = {
+  COINGECKO_IDS: Record<string, string> = {
     BTCUSDT: 'bitcoin', ETHUSDT: 'ethereum', ADAUSDT: 'cardano',
     XRPUSDT: 'ripple', DOGEUSDT: 'dogecoin', LINKUSDT: 'chainlink',
     SOLUSDT: 'solana', BNBUSDT: 'binancecoin', AVAXUSDT: 'avalanche-2',
@@ -113,7 +113,15 @@ class BybitAPI {
     const coinId = this.COINGECKO_IDS[symbol]
     if (!coinId) throw new Error(`No CoinGecko mapping for ${symbol}`)
     const res = await fetch(`https://api.coingecko.com/api/v3/coins/${coinId}/ohlc?vs_currency=usd&days=30`)
-    const data = await res.json() as [number, number, number, number, number][][]
+    const text = await res.text()
+    let data: any[]
+    try {
+      data = JSON.parse(text)
+    } catch (e) {
+      throw new Error(`CoinGecko parse error for ${symbol}: ${text.substring(0, 100)}`)
+    }
+    if (!Array.isArray(data)) throw new Error(`CoinGecko OHLC not array for ${symbol}`)
+
     return data.map((candle: any[]) => ({
       timestamp: candle[0],
       open: candle[1],
