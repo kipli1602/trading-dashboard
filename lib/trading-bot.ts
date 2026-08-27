@@ -113,26 +113,29 @@ export class TradingBot {
     console.log(`[${new Date().toISOString()}] Running trading cycle...`)
     const errors: string[] = []
 
-    // Step 1: Fetch price data for all 9 pairs
+    // Step 1: Fetch price data for all 9 pairs (concurrent for speed)
     const pairData = new Map<string, PriceData[]>()
 
-    for (const pairConfig of this.config.enabledPairs) {
-      if (!pairConfig.enabled) continue
-      try {
-        const data = await this.binance.getKlines(
-          pairConfig.symbol,
-          '1h',
-          500
-        )
-        if (data && data.length > 0) {
-          pairData.set(pairConfig.symbol, data)
-        } else {
-          errors.push(`${pairConfig.symbol}: no klines data returned`)
+    const fetchPromises = this.config.enabledPairs
+      .filter(p => p.enabled)
+      .map(async (pairConfig) => {
+        try {
+          const data = await this.binance.getKlines(
+            pairConfig.symbol,
+            '1h',
+            500
+          )
+          if (data && data.length > 0) {
+            pairData.set(pairConfig.symbol, data)
+          } else {
+            errors.push(`${pairConfig.symbol}: no klines data returned`)
+          }
+        } catch (e: any) {
+          errors.push(`${pairConfig.symbol}: ${e.message || 'fetch failed'}`)
         }
-      } catch (e: any) {
-        errors.push(`${pairConfig.symbol}: ${e.message || 'fetch failed'}`)
-      }
-    }
+      })
+
+    await Promise.all(fetchPromises)
 
     // Step 2: Generate AI signals for all pairs
     const activePairs = this.config.enabledPairs
