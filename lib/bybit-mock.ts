@@ -51,20 +51,31 @@ class BybitAPI {
     return prices
   }
 
-  // Get klines (1h candles)
+  // Get klines (1h candles) - Bybit V5 max limit=200
   async getKlines(symbol: string, interval: string = '60', limit: number = 200): Promise<PriceData[]> {
     const bybitSymbol = BYBIT_SYMBOLS[symbol] || symbol
-    const res = await fetch(`${BYBIT_BASE}/v5/market/kline?category=spot&symbol=${bybitSymbol}&interval=${interval}&limit=${limit}`)
-    const data = await res.json()
+    // Convert interval: Binance '1h' -> Bybit '60'
+    const bybitInterval = interval.replace(/h$/, '')
+    const safeLimit = Math.min(limit, 200) // Bybit V5 max = 200
+    const res = await fetch(`${BYBIT_BASE}/v5/market/kline?category=spot&symbol=${bybitSymbol}&interval=${bybitInterval}&limit=${safeLimit}`, {
+      headers: { 'Accept-Encoding': 'identity' },
+    })
+    const text = await res.text()
+    let data: any
+    try {
+      data = JSON.parse(text)
+    } catch (e) {
+      throw new Error(`JSON parse error for ${symbol}: ${text.substring(0, 100)}`)
+    }
     if (data.retCode !== 0 || !data.result?.list) throw new Error(data.retMsg || 'Klines fetch failed')
 
     return data.result.list.reverse().map((k: any) => ({
-      timestamp: parseInt(k.openTime),
-      open: parseFloat(k.open),
-      high: parseFloat(k.high),
-      low: parseFloat(k.low),
-      close: parseFloat(k.close),
-      volume: parseFloat(k.volume),
+      timestamp: parseInt(k[0]), // Bybit V5 uses array format
+      open: parseFloat(k[1]),
+      high: parseFloat(k[2]),
+      low: parseFloat(k[3]),
+      close: parseFloat(k[4]),
+      volume: parseFloat(k[5]),
     }))
   }
 
