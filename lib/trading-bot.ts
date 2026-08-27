@@ -113,12 +113,14 @@ export class TradingBot {
     console.log(`[${new Date().toISOString()}] Running trading cycle...`)
     const errors: string[] = []
 
-    // Step 1: Fetch price data for all 9 pairs (concurrent for speed)
+    // Step 1: Fetch price data for all 9 pairs (staggered for CoinGecko rate limit)
     const pairData = new Map<string, PriceData[]>()
 
     const fetchPromises = this.config.enabledPairs
       .filter(p => p.enabled)
-      .map(async (pairConfig) => {
+      .map(async (pairConfig, index) => {
+        // Stagger requests to avoid CoinGecko rate limit (50/min, burst protected)
+        await new Promise(resolve => setTimeout(resolve, index * 500))
         try {
           const data = await this.binance.getKlines(
             pairConfig.symbol,

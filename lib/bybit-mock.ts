@@ -112,7 +112,7 @@ class BybitAPI {
   async coingeckoOHLC(symbol: string): Promise<PriceData[]> {
     const coinId = this.COINGECKO_IDS[symbol]
     if (!coinId) throw new Error(`No CoinGecko mapping for ${symbol}`)
-    const res = await fetch(`https://api.coingecko.com/api/v3/coins/${coinId}/ohlc?vs_currency=usd&days=30`)
+    const res = await fetch(`https://api.coingecko.com/api/v3/coins/${coinId}/ohlc?vs_currency=usd&days=14`)
     const text = await res.text()
     let data: any[]
     try {
