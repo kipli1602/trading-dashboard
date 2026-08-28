@@ -1,9 +1,9 @@
 FROM node:18-alpine AS builder
 WORKDIR /app
 COPY package*.json ./
-RUN npm ci --only=production
+RUN npm ci
 COPY . .
-RUN npx tsc --noEmit 2>/dev/null; npm run build
+RUN npm run build
 
 FROM node:18-alpine
 WORKDIR /app
