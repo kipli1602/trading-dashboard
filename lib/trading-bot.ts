@@ -194,8 +194,8 @@ export class TradingBot {
       return
     }
 
-    // Only take high-confidence BUY signals (>0.6)
-    if (signal.action !== 'BUY' || signal.confidence < 0.6) {
+    // Only take BUY signals with confidence >0.3
+    if (signal.action !== 'BUY' || signal.confidence < 0.3) {
       return
     }
 

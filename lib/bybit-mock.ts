@@ -153,16 +153,19 @@ class BybitAPI {
     const now = Date.now()
     let price = basePrice
 
-    const direction = (Math.random() - 0.42) * 0.012
+    const direction = (Math.random() - 0.45) * 0.01
     for (let i = count; i >= 0; i--) {
       const ts = now - i * 3600000
+      // Add strong trend in last 15 candles for MA crossover signal
+      let trendStrength = 0
+      if (i < 5) trendStrength = i < 3 ? 0.008 : 0.012 // uptrend near end
       // Random walk with trend for AI signal generation
-      const noise = (Math.random() - 0.5) * 0.022
-      price = price * (1 + direction + noise)
-      const open = price * (1 - (Math.random() - 0.5) * 0.003)
-      const close = price * (1 + (Math.random() - 0.5) * 0.003)
-      const high = Math.max(open, close) * (1 + Math.random() * 0.008)
-      const low = Math.min(open, close) * (1 - Math.random() * 0.008)
+      const noise = (Math.random() - 0.5) * 0.015
+      price = price * (1 + direction + noise + trendStrength)
+      const open = price * (1 - (Math.random() - 0.5) * 0.002)
+      const close = price * (1 + (Math.random() - 0.5) * 0.002)
+      const high = Math.max(open, close) * (1 + Math.random() * 0.005)
+      const low = Math.min(open, close) * (1 - Math.random() * 0.005)
       data.push({ timestamp: ts, open, high, low, close, volume: Math.random() * 2000 * basePrice })
     }
     return data
