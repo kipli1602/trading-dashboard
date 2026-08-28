@@ -196,16 +196,20 @@ class BybitAPI {
 
   // Get symbol info (lot size)
   async getSymbolInfo(symbol: string): Promise<any> {
-    const bybitSymbol = BYBIT_SYMBOLS[symbol] || symbol
-    const res = await fetch(`${BYBIT_BASE}/v5/market/instruments-info?category=spot&symbol=${bybitSymbol}`)
-    const data = await res.json()
-    if (data.retCode === 0 && data.result?.list?.[0]) {
-      const info = data.result.list[0]
-      return {
-        symbol: info.symbol,
-        lotSize: parseFloat(info.lotSize || info.minOrderQty || '0.001'),
-        minQty: parseFloat(info.minOrderQty || '0.001'),
+    try {
+      const bybitSymbol = BYBIT_SYMBOLS[symbol] || symbol
+      const res = await fetch(`${BYBIT_BASE}/v5/market/instruments-info?category=spot&symbol=${bybitSymbol}`)
+      const data = await res.json()
+      if (data.retCode === 0 && data.result?.list?.[0]) {
+        const info = data.result.list[0]
+        return {
+          symbol: info.symbol,
+          lotSize: parseFloat(info.lotSize || info.minOrderQty || '0.001'),
+          minQty: parseFloat(info.minOrderQty || '0.001'),
+        }
       }
+    } catch (e) {
+      // Bybit geo-blocked - use defaults
     }
     // Fallback
     return { symbol, lotSize: 0.001, minQty: 0.001 }
