@@ -210,53 +210,56 @@ export class TradingBot {
       return
     }
 
-    // Get symbol info for step size
+    // Get symbol info for step size (fallback to default if Bybit geo-blocked)
     const info = await this.binance.getSymbolInfo(signal.symbol)
-    if (info) {
-      const formattedQty = this.binance.formatQuantity(quantity, info.lotSize)
+    const lotSize = info?.lotSize || 0.001
+    const formattedQty = this.binance.formatQuantity(quantity, lotSize)
 
-      // Place BUY order
-      try {
-        const order = await this.binance.placeOrder(
-          signal.symbol, 'BUY', 'MARKET', formattedQty
-        )
+    if (formattedQty <= 0) {
+      console.log(`Quantity too small for ${signal.symbol}`)
+      return
+    }
 
-        console.log(`BUY order placed: ${signal.symbol} x ${formattedQty}`, order)
+    // Place BUY order
+    try {
+      const order = await this.binance.placeOrder(
+        signal.symbol, 'BUY', 'MARKET', formattedQty
+      )
 
-        // Open position in risk manager
-        const position = this.riskMgr.openPosition({
-          symbol: signal.symbol,
-          price: order.fills[0].price,
-          confidence: signal.confidence,
-          strategy: signal.strategy,
-        })
+      console.log(`BUY order placed: ${signal.symbol} x ${formattedQty}`, order)
 
-        if (position) {
-          // Set stop loss and take profit via OCO
-          if (position.stopLoss && position.takeProfit) {
-            await this.setSLTP(position)
-          }
+      // Open position in risk manager
+      const position = this.riskMgr.openPosition({
+        symbol: signal.symbol,
+        price: order.fills[0].price,
+        confidence: signal.confidence,
+        strategy: signal.strategy,
+      })
+
+      if (position) {
+        // Set stop loss and take profit via OCO
+        if (position.stopLoss && position.takeProfit) {
+          await this.setSLTP(position)
         }
-      } catch (error) {
-        console.error(`Real trading failed (likely geo-block), using mock execution: ${signal.symbol}`)
-        // Mock execution fallback when Bybit/Binance geo-blocked from Vercel
-        const mockPrice = currentPrice.toString()
-        const mockOrderId = Math.floor(Math.random() * 99999999)
-        console.log(`SIMULATED BUY: ${signal.symbol} x ${formattedQty} @ ${mockPrice}`)
+      }
+    } catch (error) {
+      console.error(`Real trading failed (likely geo-block), using mock execution: ${signal.symbol}`)
+      // Mock execution fallback when Bybit/Binance geo-blocked from Vercel
+      const mockPrice = currentPrice.toString()
+      console.log(`SIMULATED BUY: ${signal.symbol} x ${formattedQty} @ ${mockPrice}`)
 
-        // Open position in risk manager with mock order data
-        const position = this.riskMgr.openPosition({
-          symbol: signal.symbol,
-          price: parseFloat(mockPrice),
-          confidence: signal.confidence,
-          strategy: signal.strategy,
-        })
+      // Open position in risk manager with mock order data
+      const position = this.riskMgr.openPosition({
+        symbol: signal.symbol,
+        price: parseFloat(mockPrice),
+        confidence: signal.confidence,
+        strategy: signal.strategy,
+      })
 
-        if (position) {
-          // Set TP/SL on mock position (won't actually place on exchange, but tracks levels)
-          if (position.stopLoss && position.takeProfit) {
-            try { await this.setSLTP(position) } catch { /* mock - ignore SL/TP errors */ }
-          }
+      if (position) {
+        // Set TP/SL on mock position (won't actually place on exchange, but tracks levels)
+        if (position.stopLoss && position.takeProfit) {
+          try { await this.setSLTP(position) } catch { /* mock - ignore SL/TP errors */ }
         }
       }
     }
