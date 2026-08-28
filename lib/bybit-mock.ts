@@ -126,11 +126,12 @@ class BybitAPI {
     const coinId = this.COINGECKO_IDS[symbol]
     if (!coinId) throw new Error(`No CoinGecko mapping for ${symbol}`)
     try {
-      const res = await fetch(`https://api.coingecko.com/api/v3/coins/${coinId}/ohlc?vs_currency=usd&days=14`)
+      const res = await fetch(`https://api.coingecko.com/api/v3/coins/${coinId}/ohlc?vs_currency=usd&days=7`)
       const text = await res.text()
       let data: any[]
       try { data = JSON.parse(text) } catch { throw new Error(`Parse error`) }
       if (!Array.isArray(data)) throw new Error('Not array')
+      if (data.length < 20) throw new Error(`Insufficient candles: ${data.length}`)
 
       return data.map((candle: any[]) => ({
         timestamp: candle[0],
