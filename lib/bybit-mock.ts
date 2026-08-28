@@ -131,24 +131,37 @@ class BybitAPI {
     }
   }
 
-  // Generate mock klines (synthetic patterns for AI signal testing)
+  // Generate mock klines with V-recovery pattern for AI signal testing
+  // Pattern: flat → dip → sharp recovery → ensures MA crossover + RSI signals
   private mockKlines(symbol: string, count: number = 200, realPrice: number = 0): PriceData[] {
     const basePrice = realPrice || getMockBasePrice(symbol)
     const data: PriceData[] = []
     const now = Date.now()
     let price = basePrice
 
-    const direction = (Math.random() - 0.45) * 0.01
+    // Phase layout: flat(120), dip(20), recovery(60) candles
+    const flatEnd = count - 80
+    const dipEnd = flatEnd + 20
+
     for (let i = count; i >= 0; i--) {
       const ts = now - i * 3600000
-      // Add strong trend in last 15 candles for MA crossover signal
-      let trendStrength = 0
-      if (i < 5) trendStrength = i < 3 ? 0.008 : 0.012 // uptrend near end
-      // Random walk with trend for AI signal generation
-      const noise = (Math.random() - 0.5) * 0.015
-      price = price * (1 + direction + noise + trendStrength)
-      const open = price * (1 - (Math.random() - 0.5) * 0.002)
-      const close = price * (1 + (Math.random() - 0.5) * 0.002)
+      let delta = (Math.random() - 0.5) * 0.008
+
+      if (i < flatEnd) {
+        // Phase 1: flat random walk
+        delta = (Math.random() - 0.5) * 0.012
+      } else if (i >= dipEnd) {
+        // Phase 2: sharp recovery (uptrend)
+        delta = 0.025 + (Math.random() - 0.5) * 0.006
+        if (i < 5) delta += 0.02 // extra boost for MA crossover
+      } else {
+        // Phase 3: dip (downtrend)
+        delta = -0.018 + (Math.random() - 0.5) * 0.008
+      }
+
+      price = price * (1 + delta)
+      const open = price * (1 - (Math.random() - 0.5) * 0.003)
+      const close = price * (1 + (Math.random() - 0.5) * 0.003)
       const high = Math.max(open, close) * (1 + Math.random() * 0.005)
       const low = Math.min(open, close) * (1 - Math.random() * 0.005)
       data.push({ timestamp: ts, open, high, low, close, volume: Math.random() * 2000 * basePrice })
