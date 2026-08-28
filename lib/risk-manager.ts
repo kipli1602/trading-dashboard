@@ -1,5 +1,5 @@
 import { Position, Trade, PortfolioStats, BotConfig, PairConfig } from '@/types'
-import { RISK_CONFIG } from '@/lib/config'
+import { RISK_CONFIG, DEFAULT_BOT_CONFIG, PAIRS_9 } from '@/lib/config'
 
 // ============================================================
 // Risk Manager
@@ -239,6 +239,6 @@ export const riskManager = new RiskManager({
   maxPairs: 9,
   maxPositionPerPair: 150000,
   dailyLossLimit: 100000,
-  enabledPairs: [],
-  strategyWeights: {},
+  enabledPairs: PAIRS_9,
+  strategyWeights: DEFAULT_BOT_CONFIG.strategyWeights,
 })
