@@ -2,6 +2,7 @@ import BinanceAPI from '@/lib/binance'
 import MockBinanceAPI from '@/lib/binance-mock'
 import BybitAPI from '@/lib/bybit-mock'
 import CoinbaseAPI from '@/lib/coinbase'
+import KuCoinAPI from '@/lib/kucoin'
 import AISignalEngine from '@/lib/ai-signal'
 import { RiskManager, riskManager } from '@/lib/risk-manager'
 import { DEFAULT_BOT_CONFIG, RISK_CONFIG } from '@/lib/config'
@@ -12,10 +13,10 @@ import { PAIRS_9 } from '@/lib/config'
 // Trading Bot Engine
 // ============================================================
 // Menggabungkan: Data fetching + AI signals + Risk management + Auto execution
-// Supports: Bybit API (Singapore required) + Coinbase API (works from US)
+// Supports: KuCoin (US OK) > Coinbase (US OK) > Bybit (Singapore required) > Mock
 
 export class TradingBot {
-  private binance: BinanceAPI | MockBinanceAPI | BybitAPI | CoinbaseAPI
+  private binance: BinanceAPI | MockBinanceAPI | BybitAPI | CoinbaseAPI | KuCoinAPI
   private aiEngine: AISignalEngine
   private riskMgr: RiskManager
   private isRunning: boolean = false
@@ -27,9 +28,16 @@ export class TradingBot {
     if (useMock) {
       // Use mock for dev/testing, CoinGecko for real prices
       this.binance = new MockBinanceAPI()
-    } else if (passphrase) {
+    } else if (passphrase && process.env.USE_COINBASE === 'true') {
       // Use Coinbase for real trading (works from US IPs!)
       this.binance = new CoinbaseAPI(apiKey || '', apiSecret || '', passphrase)
+    } else if (process.env.KUCOIN_API_KEY || (apiKey && passphrase && process.env.USE_KUCOIN === 'true')) {
+      // Use KuCoin for real trading (works from US IPs!)
+      this.binance = new KuCoinAPI(
+        process.env.KUCOIN_API_KEY || apiKey || '',
+        process.env.KUCOIN_API_SECRET || apiSecret || '',
+        process.env.KUCOIN_PASSPHRASE || passphrase || ''
+      )
     } else {
       // Use Bybit as fallback for real trading
       this.binance = new BybitAPI(apiKey || '', apiSecret || '')
@@ -444,10 +452,14 @@ export class TradingBot {
 }
 
 // Export singleton instance
-// Priority: Coinbase (works from US) > Bybit (needs Singapore) > Mock
+// Priority: KuCoin (US OK) > Coinbase (US OK) > Bybit (SG) > Mock
+const hasKuCoin = !!(process.env.KUCOIN_API_KEY && process.env.KUCOIN_API_SECRET && process.env.KUCOIN_PASSPHRASE)
+const hasCoinbase = !!(process.env.CB_API_KEY && process.env.CB_API_SECRET && process.env.CB_PASSPHRASE)
+const hasBybit = !!(process.env.BYBIT_API_KEY && process.env.BYBIT_API_SECRET)
+
 export const tradingBot = new TradingBot(
-  !process.env.CB_API_KEY || !process.env.CB_API_SECRET || !process.env.CB_PASSPHRASE,
-  process.env.CB_API_KEY || process.env.BYBIT_API_KEY || process.env.BINANCE_API_KEY || '',
-  process.env.CB_API_SECRET || process.env.BYBIT_API_SECRET || process.env.BINANCE_API_SECRET || '',
-  process.env.CB_PASSPHRASE || ''
+  !hasKuCoin && !hasCoinbase && !hasBybit, // useMock
+  process.env.KUCOIN_API_KEY || process.env.CB_API_KEY || process.env.BYBIT_API_KEY || process.env.BINANCE_API_KEY || '',
+  process.env.KUCOIN_API_SECRET || process.env.CB_API_SECRET || process.env.BYBIT_API_SECRET || process.env.BINANCE_API_SECRET || '',
+  process.env.KUCOIN_PASSPHRASE || process.env.CB_PASSPHRASE || ''
 )

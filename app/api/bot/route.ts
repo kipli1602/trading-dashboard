@@ -18,18 +18,20 @@ export async function GET(req: NextRequest) {
         return NextResponse.json(prices)
 
       case 'debug':
+        const hasKuCoin = !!process.env.KUCOIN_API_KEY && !!process.env.KUCOIN_API_SECRET && !!process.env.KUCOIN_PASSPHRASE
         const hasBybit = !!process.env.BYBIT_API_KEY && !!process.env.BYBIT_API_SECRET
         const hasCoinbase = !!process.env.CB_API_KEY && !!process.env.CB_API_SECRET && !!process.env.CB_PASSPHRASE
         const hasBinance = !!process.env.BINANCE_API_KEY && !!process.env.BINANCE_API_SECRET
-        const apiMode = hasCoinbase ? 'coinbase-real-trading' : (hasBybit ? 'bybit-real-trading' : (hasBinance ? 'binance-real-trading' : 'mock'))
+        const apiMode = hasKuCoin ? 'kucoin-real-trading' : (hasCoinbase ? 'coinbase-real-trading' : (hasBybit ? 'bybit-real-trading' : (hasBinance ? 'binance-real-trading' : 'mock')))
         return NextResponse.json({
           apiMode,
+          hasKuCoin,
           hasCoinbaseKey: hasCoinbase,
           hasBybitKey: !!(process.env.BYBIT_API_KEY && process.env.BYBIT_API_SECRET),
           hasBinanceKey: !!(process.env.BINANCE_API_KEY && process.env.BINANCE_API_KEY),
-          apiKeyLen: (process.env.CB_API_KEY || process.env.BYBIT_API_KEY || process.env.BINANCE_API_KEY || '').length,
+          apiKeyLen: (process.env.KUCOIN_API_KEY || process.env.CB_API_KEY || process.env.BYBIT_API_KEY || process.env.BINANCE_API_KEY || '').length,
           useTestnet: process.env.USE_TESTNET,
-          useSandbox: process.env.USE_TESTNET === 'true',
+          useSandbox: process.env.KUCOIN_SANDBOX !== 'false',
           status: tradingBot.getStatus(),
         })
 
