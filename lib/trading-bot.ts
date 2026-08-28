@@ -247,7 +247,7 @@ export class TradingBot {
         // Open position in risk manager with mock order data
         const position = this.riskMgr.openPosition({
           symbol: signal.symbol,
-          price: mockPrice,
+          price: parseFloat(mockPrice),
           confidence: signal.confidence,
           strategy: signal.strategy,
         })
