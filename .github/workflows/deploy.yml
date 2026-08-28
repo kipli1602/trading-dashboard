@@ -1,4 +1,4 @@
-name: Deploy to Vercel
+name: Deploy to Vercel + Fly.io (Singapore)
 
 on:
   push:
@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  deploy:
+  deploy-vercel:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -29,3 +29,27 @@ jobs:
           vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
           vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
           vercel-args: '--prod --prebuilt'
+
+  deploy-flyio:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Fly.io
+        uses: superfly/flyctl-actions/setup-flyctl@v1
+
+      - name: Deploy to Fly.io Singapore (non-US)
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        run: |
+          flyctl deploy --app trading-bot-singapore --region sin --remote-only --ha=false
+
+      - name: Set secrets
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        run: |
+          flyctl secrets set --app trading-bot-singapore \
+            USE_TESTNET=true \
+            BYBIT_API_KEY="${{ secrets.BYBIT_API_KEY }}" \
+            BYBIT_API_SECRET="${{ secrets.BYBIT_API_SECRET }}" \
+            BINANCE_API_KEY="${{ secrets.BINANCE_API_KEY }}"
