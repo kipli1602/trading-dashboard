@@ -40,7 +40,7 @@ class CoinbaseAPI {
     const { default: crypto } = await import('crypto')
     const prehash = timestamp + method + requestPath.replace(COINBASE_BASE, '') + body
     return crypto
-      .createHmac('sha256', Buffer.from(this.apiSecret, 'base64'))
+      .createHmac('sha256', crypto.createSecretKey(Buffer.from(this.apiSecret, 'base64') as any))
       .update(prehash)
       .digest('base64')
   }
