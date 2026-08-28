@@ -3,10 +3,10 @@ import { PriceData } from '@/types'
 // ============================================================
 // Bybit API - real trading via Bybit testnet
 // ============================================================
-// Testnet: https://api-testnet.bybit.com
-// No IP restrictions (works from US/Vercel, unlike Binance)
+// Production: uses PROXY_URL (Singapore/Tokyo) for non-US access
+// Fallback: direct Bybit URL when running on non-US server
+const BYBIT_BASE = process.env.PROXY_URL || 'https://api-testnet.bybit.com'
 
-const BYBIT_BASE = 'https://api-testnet.bybit.com'
 const BYBIT_SYMBOLS: Record<string, string> = {
   BTCUSDT: 'BTCUSDT', ETHUSDT: 'ETHUSDT', ADAUSDT: 'ADAUSDT',
   XRPUSDT: 'XRPUSDT', DOGEUSDT: 'DOGEUSDT', LINKUSDT: 'LINKUSDT',

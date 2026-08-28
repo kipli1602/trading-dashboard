@@ -11,16 +11,13 @@ jobs:
   cron:
     runs-on: ubuntu-latest
     steps:
-      - name: Trigger bot cron cycle (Fly.io Singapore = REAL trading)
+      - name: Trigger bot cron cycle
         run: |
           RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" \
-            "https://trading-bot-singapore.fly.dev/api/bot?action=cron")
+            "https://trading-dashboard-kipli.vercel.app/api/bot?action=cron")
           if [ "$RESPONSE" == "200" ]; then
-            echo "✅ Bot cron cycle triggered successfully on Fly.io Singapore"
+            echo "✅ Bot cron cycle triggered successfully"
           else
             echo "❌ Bot cron failed with status: $RESPONSE"
-            # Fallback to Vercel (mock mode) if Fly.io not yet deployed
-            VERCEL_RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" \
-              "https://trading-dashboard-kipli.vercel.app/api/bot?action=cron")
-            echo "Vercel fallback status: $VERCEL_RESPONSE"
+            echo "Bot running in mock mode (US Vercel), real Bybit trading requires non-US deploy"
           fi
