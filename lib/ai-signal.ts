@@ -181,7 +181,7 @@ class AISignalEngine {
       const data = pairData.get(config.symbol)
       if (data && data.length >= 20) {
         const signal = this.generateSignal(data, config.symbol, config.strategies)
-        if (signal.action !== 'HOLD' && signal.confidence >= 0.5) {
+        if (signal.action !== 'HOLD' && signal.confidence >= 0.3) {
           signals.push(signal)
         }
       }
