@@ -153,16 +153,16 @@ class BybitAPI {
     const now = Date.now()
     let price = basePrice
 
+    const direction = (Math.random() - 0.42) * 0.012
     for (let i = count; i >= 0; i--) {
       const ts = now - i * 3600000
-      const cycle = Math.sin(i / 15) * 0.8
-      const micro = Math.sin(i / 3) * 0.2
-      const noise = (Math.random() - 0.5) * 0.03
-      price = price * (1 + cycle * 0.02 + micro * 0.01 + noise)
-      const open = price * (1 - (Math.random() - 0.5) * 0.005)
-      const close = price * (1 + (Math.random() - 0.5) * 0.005)
-      const high = Math.max(open, close) * (1 + Math.random() * 0.01)
-      const low = Math.min(open, close) * (1 - Math.random() * 0.01)
+      // Random walk with trend for AI signal generation
+      const noise = (Math.random() - 0.5) * 0.022
+      price = price * (1 + direction + noise)
+      const open = price * (1 - (Math.random() - 0.5) * 0.003)
+      const close = price * (1 + (Math.random() - 0.5) * 0.003)
+      const high = Math.max(open, close) * (1 + Math.random() * 0.008)
+      const low = Math.min(open, close) * (1 - Math.random() * 0.008)
       data.push({ timestamp: ts, open, high, low, close, volume: Math.random() * 2000 * basePrice })
     }
     return data
