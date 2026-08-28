@@ -65,8 +65,8 @@ class AISignalEngine {
       allReasons.push(`[${r.name}] ${r.reasons.join('; ')}`)
     }
 
-    // Decision logic
-    if (buyVotes > sellVotes && buyVotes > holdVotes) {
+    // Decision logic — BUY when buy >= sell, SELL only when strictly more
+    if (buyVotes >= sellVotes && buyVotes > 0) {
       // Calculate consensus strength
       const consensusRatio = buyVotes / totalWeight
       // Boost confidence based on how many strategies agree
@@ -76,10 +76,10 @@ class AISignalEngine {
         .reduce((sum, r) => sum + r.confidence, 0) / Math.max(1, results.filter(r => r.signal === 'BUY').length)
 
       action = 'BUY'
-      confidence = Math.min(0.95, consensusRatio * agreementFactor * avgConfidence * 1.5 + 0.3)
-      allReasons.push(`AI CONFIDENCE: ${buyVotes.toFixed(2)} buy votes vs ${(sellVotes + holdVotes).toFixed(2)} others`)
+      confidence = Math.min(0.95, consensusRatio * agreementFactor * avgConfidence * 1.5 + 0.35)
+      allReasons.push(`AI CONFIDENCE: ${buyVotes.toFixed(2)} buy votes vs sell=${sellVotes.toFixed(2)}`)
       allReasons.push(`Consensus ratio: ${(consensusRatio * 100).toFixed(1)}% | Agreement: ${(agreementFactor * 100).toFixed(1)}%`)
-    } else if (sellVotes > buyVotes && sellVotes > holdVotes) {
+    } else if (sellVotes > buyVotes && sellVotes > 0) {
       const consensusRatio = sellVotes / totalWeight
       const agreementFactor = results.filter(r => r.signal === 'SELL').length / results.length
       const avgConfidence = results
@@ -87,8 +87,8 @@ class AISignalEngine {
         .reduce((sum, r) => sum + r.confidence, 0) / Math.max(1, results.filter(r => r.signal === 'SELL').length)
 
       action = 'SELL'
-      confidence = Math.min(0.95, consensusRatio * agreementFactor * avgConfidence * 1.5 + 0.3)
-      allReasons.push(`AI CONFIDENCE: ${sellVotes.toFixed(2)} sell votes vs ${(buyVotes + holdVotes).toFixed(2)} others`)
+      confidence = Math.min(0.95, consensusRatio * agreementFactor * avgConfidence * 1.5 + 0.35)
+      allReasons.push(`AI CONFIDENCE: ${sellVotes.toFixed(2)} sell votes vs buy=${buyVotes.toFixed(2)}`)
       allReasons.push(`Consensus ratio: ${(consensusRatio * 100).toFixed(1)}% | Agreement: ${(agreementFactor * 100).toFixed(1)}%`)
     } else {
       action = 'HOLD'

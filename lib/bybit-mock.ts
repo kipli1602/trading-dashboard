@@ -131,39 +131,40 @@ class BybitAPI {
     }
   }
 
-  // Generate mock klines with V-recovery pattern for AI signal testing
-  // Pattern: flat → dip → sharp recovery → ensures MA crossover + RSI signals
+  // Generate mock klines with mean-reverting V-recovery pattern for AI signal testing
+  // Uses additive price changes (not compounding) to keep prices realistic
   private mockKlines(symbol: string, count: number = 200, realPrice: number = 0): PriceData[] {
     const basePrice = realPrice || getMockBasePrice(symbol)
     const data: PriceData[] = []
     const now = Date.now()
     let price = basePrice
 
-    // Phase layout: flat(120), dip(20), recovery(60) candles
-    const flatEnd = count - 80
-    const dipEnd = flatEnd + 20
+    // Phase: flat(175), dip(20), recovery(25) — uses additive (base-proportional) changes
+    const dipStart = count - 45
 
     for (let i = count; i >= 0; i--) {
       const ts = now - i * 3600000
-      let delta = (Math.random() - 0.5) * 0.008
+      let delta = (Math.random() - 0.5) * 0.006
 
-      if (i < flatEnd) {
-        // Phase 1: flat random walk
-        delta = (Math.random() - 0.5) * 0.012
-      } else if (i >= dipEnd) {
-        // Phase 2: sharp recovery (uptrend)
-        delta = 0.025 + (Math.random() - 0.5) * 0.006
-        if (i < 5) delta += 0.02 // extra boost for MA crossover
+      if (i >= dipStart) {
+        // Phase 1: flat with strong mean reversion
+        delta = (Math.random() - 0.5) * 0.004 - (price - basePrice) / basePrice * 0.02
+      } else if (i < 20) {
+        // Phase 2: recovery (uptrend, avoids RSI > 80)
+        delta = 0.006 + (Math.random() - 0.5) * 0.002
       } else {
-        // Phase 3: dip (downtrend)
-        delta = -0.018 + (Math.random() - 0.5) * 0.008
+        // Phase 3: dip (downtrend → RSI into 30-50 range)
+        delta = -0.008 + (Math.random() - 0.5) * 0.002 - (price - basePrice * 0.92) / basePrice * 0.01
       }
 
-      price = price * (1 + delta)
-      const open = price * (1 - (Math.random() - 0.5) * 0.003)
-      const close = price * (1 + (Math.random() - 0.5) * 0.003)
-      const high = Math.max(open, close) * (1 + Math.random() * 0.005)
-      const low = Math.min(open, close) * (1 - Math.random() * 0.005)
+      // Additive change: delta is proportional to basePrice, not current price
+      price = price + delta * basePrice
+      price = Math.max(basePrice * 0.8, Math.min(basePrice * 1.15, price))
+
+      const open = i < count ? price - delta * basePrice : price
+      const close = price
+      const high = Math.max(open, close) * (1 + Math.random() * 0.004)
+      const low = Math.min(open, close) * (1 - Math.random() * 0.004)
       data.push({ timestamp: ts, open, high, low, close, volume: Math.random() * 2000 * basePrice })
     }
     return data
