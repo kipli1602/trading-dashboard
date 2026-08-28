@@ -1,6 +1,7 @@
 import BinanceAPI from '@/lib/binance'
 import MockBinanceAPI from '@/lib/binance-mock'
 import BybitAPI from '@/lib/bybit-mock'
+import CoinbaseAPI from '@/lib/coinbase'
 import AISignalEngine from '@/lib/ai-signal'
 import { RiskManager, riskManager } from '@/lib/risk-manager'
 import { DEFAULT_BOT_CONFIG, RISK_CONFIG } from '@/lib/config'
@@ -11,9 +12,10 @@ import { PAIRS_9 } from '@/lib/config'
 // Trading Bot Engine
 // ============================================================
 // Menggabungkan: Data fetching + AI signals + Risk management + Auto execution
+// Supports: Bybit API (Singapore required) + Coinbase API (works from US)
 
 export class TradingBot {
-  private binance: BinanceAPI | MockBinanceAPI | BybitAPI
+  private binance: BinanceAPI | MockBinanceAPI | BybitAPI | CoinbaseAPI
   private aiEngine: AISignalEngine
   private riskMgr: RiskManager
   private isRunning: boolean = false
@@ -21,12 +23,15 @@ export class TradingBot {
   private intervalId: any = null
   private checkInterval: number = 300
 
-  constructor(useMock: boolean = true, apiKey?: string, apiSecret?: string) {
+  constructor(useMock: boolean = true, apiKey?: string, apiSecret?: string, passphrase?: string) {
     if (useMock) {
       // Use mock for dev/testing, CoinGecko for real prices
       this.binance = new MockBinanceAPI()
+    } else if (passphrase) {
+      // Use Coinbase for real trading (works from US IPs!)
+      this.binance = new CoinbaseAPI(apiKey || '', apiSecret || '', passphrase)
     } else {
-      // Use Bybit for real trading (works from any IP, unlike Binance)
+      // Use Bybit as fallback for real trading
       this.binance = new BybitAPI(apiKey || '', apiSecret || '')
     }
 
@@ -439,9 +444,10 @@ export class TradingBot {
 }
 
 // Export singleton instance
-// Use Bybit API for real trading (Bybit not blocked like Binance from US IPs)
+// Priority: Coinbase (works from US) > Bybit (needs Singapore) > Mock
 export const tradingBot = new TradingBot(
-  !process.env.BYBIT_API_KEY || !process.env.BYBIT_API_SECRET,
-  process.env.BYBIT_API_KEY || process.env.BINANCE_API_KEY || '',
-  process.env.BYBIT_API_SECRET || process.env.BINANCE_API_SECRET || ''
+  !process.env.CB_API_KEY || !process.env.CB_API_SECRET || !process.env.CB_PASSPHRASE,
+  process.env.CB_API_KEY || process.env.BYBIT_API_KEY || process.env.BINANCE_API_KEY || '',
+  process.env.CB_API_SECRET || process.env.BYBIT_API_SECRET || process.env.BINANCE_API_SECRET || '',
+  process.env.CB_PASSPHRASE || ''
 )

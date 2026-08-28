@@ -19,13 +19,17 @@ export async function GET(req: NextRequest) {
 
       case 'debug':
         const hasBybit = !!process.env.BYBIT_API_KEY && !!process.env.BYBIT_API_SECRET
+        const hasCoinbase = !!process.env.CB_API_KEY && !!process.env.CB_API_SECRET && !!process.env.CB_PASSPHRASE
         const hasBinance = !!process.env.BINANCE_API_KEY && !!process.env.BINANCE_API_SECRET
+        const apiMode = hasCoinbase ? 'coinbase-real-trading' : (hasBybit ? 'bybit-real-trading' : (hasBinance ? 'binance-real-trading' : 'mock'))
         return NextResponse.json({
-          apiMode: hasBybit ? 'bybit-real-trading' : (hasBinance ? 'binance-real-trading' : 'mock'),
+          apiMode,
+          hasCoinbaseKey: hasCoinbase,
           hasBybitKey: !!(process.env.BYBIT_API_KEY && process.env.BYBIT_API_SECRET),
-          hasBinanceKey: !!(process.env.BINANCE_API_KEY && process.env.BINANCE_API_SECRET),
-          apiKeyLen: (process.env.BYBIT_API_KEY || process.env.BINANCE_API_KEY || '').length,
+          hasBinanceKey: !!(process.env.BINANCE_API_KEY && process.env.BINANCE_API_KEY),
+          apiKeyLen: (process.env.CB_API_KEY || process.env.BYBIT_API_KEY || process.env.BINANCE_API_KEY || '').length,
           useTestnet: process.env.USE_TESTNET,
+          useSandbox: process.env.USE_TESTNET === 'true',
           status: tradingBot.getStatus(),
         })
 
