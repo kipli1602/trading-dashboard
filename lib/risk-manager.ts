@@ -47,7 +47,7 @@ export class RiskManager {
     }
 
     // Confidence threshold
-    if (confidence < 0.5) {
+    if (confidence < 0.3) {
       return { allowed: false, reason: 'CONFIDENCE_BELOW_THRESHOLD' }
     }
 
