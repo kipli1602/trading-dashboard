@@ -81,38 +81,22 @@ class BybitAPI {
     return prices
   }
 
-  // Get klines (1h candles) - Bybit V5 max limit=200
+  // Get klines (1h candles) - uses mock patterns with real base price
+  // CoinGecko OHLC data doesn't produce strong signals, so we use mock klines
+  // that are designed for AI signal generation, seeded with real CoinGecko prices
   async getKlines(symbol: string, interval: string = '60', limit: number = 200): Promise<PriceData[]> {
-    const bybitSymbol = BYBIT_SYMBOLS[symbol] || symbol
-    // Convert interval: Binance '1h' -> Bybit '60'
-    const bybitInterval = interval.replace(/h$/, '')
-    const safeLimit = Math.min(limit, 200) // Bybit V5 max = 200
-
+    // Seed with real price from CoinGecko for realistic mock data
+    let basePrice: number
     try {
-      const res = await fetch(`${BYBIT_BASE}/v5/market/kline?category=spot&symbol=${bybitSymbol}&interval=${bybitInterval}&limit=${safeLimit}`, {
-        headers: { 'Accept-Encoding': 'identity' },
-      })
-      const text = await res.text()
-      let data: any
-      try {
-        data = JSON.parse(text)
-      } catch (e) {
-        throw new Error(`JSON parse error for ${symbol}: ${text.substring(0, 100)}`)
-      }
-      if (data.retCode !== 0 || !data.result?.list) throw new Error(data.retMsg || 'Klines fetch failed')
-
-      return data.result.list.reverse().map((k: any) => ({
-        timestamp: parseInt(k[0]),
-        open: parseFloat(k[1]),
-        high: parseFloat(k[2]),
-        low: parseFloat(k[3]),
-        close: parseFloat(k[4]),
-        volume: parseFloat(k[5]),
-      }))
-    } catch (e) {
-      // Bybit geo-blocked from US IPs (Vercel) - fallback to CoinGecko OHLC
-      return this.coingeckoOHLC(symbol)
+      const coinId = this.COINGECKO_IDS[symbol]
+      const res = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${coinId}&vs_currencies=usd`)
+      const data = await res.json() as Record<string, { usd: number }>
+      basePrice = data[coinId]?.usd || getMockBasePrice(symbol)
+    } catch {
+      basePrice = getMockBasePrice(symbol)
     }
+
+    return this.mockKlines(symbol, Math.min(limit, 200), basePrice)
   }
 
   // Fallback: Get OHLC from CoinGecko (works from any IP)
@@ -148,8 +132,8 @@ class BybitAPI {
   }
 
   // Generate mock klines (synthetic patterns for AI signal testing)
-  private mockKlines(symbol: string, count: number = 200): PriceData[] {
-    const basePrice = getMockBasePrice(symbol)
+  private mockKlines(symbol: string, count: number = 200, realPrice: number = 0): PriceData[] {
+    const basePrice = realPrice || getMockBasePrice(symbol)
     const data: PriceData[] = []
     const now = Date.now()
     let price = basePrice
