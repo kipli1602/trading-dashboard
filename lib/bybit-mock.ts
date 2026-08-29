@@ -84,7 +84,7 @@ class BybitAPI {
   // Get klines (1h candles) - uses mock patterns with real base price
   // CoinGecko OHLC data doesn't produce strong signals, so we use mock klines
   // that are designed for AI signal generation, seeded with real CoinGecko prices
-  async getKlines(symbol: string, interval: string = '60', limit: number = 200): Promise<PriceData[]> {
+  async getKlines(symbol: string, interval: string = '60', limit: number = 200, realPrice?: number): Promise<PriceData[]> {
     // Seed with real price from CoinGecko for realistic mock data
     let basePrice: number
     try {

@@ -92,7 +92,7 @@ class CoinbaseAPI {
   }
 
   // Get klines (1h candles)
-  async getKlines(symbol: string, interval: string = '3600', limit: number = 200): Promise<PriceData[]> {
+  async getKlines(symbol: string, interval: string = '3600', limit: number = 200, realPrice?: number): Promise<PriceData[]> {
     const cbSymbol = PAIR_MAP[symbol] || symbol
     const gran = this.parseGranularity(interval)
 

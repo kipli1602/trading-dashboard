@@ -126,19 +126,24 @@ export class TradingBot {
     console.log(`[${new Date().toISOString()}] Running trading cycle...`)
     const errors: string[] = []
 
-    // Step 1: Fetch price data for all 9 pairs (staggered for CoinGecko rate limit)
+    // Step 0: Fetch real-time prices FIRST (single CoinGecko request — works from US)
+    // CRITICAL: this ensures order execution uses REAL prices, not mock klines
+    const allPrices = await this.binance.getAllPrices()
+
+    // Step 1: Fetch klines for technical analysis (pass realPrice as fallback basis)
     const pairData = new Map<string, PriceData[]>()
 
     const fetchPromises = this.config.enabledPairs
       .filter(p => p.enabled)
       .map(async (pairConfig, index) => {
         // Stagger requests to avoid CoinGecko rate limit (50/min, burst protected)
-        await new Promise(resolve => setTimeout(resolve, index * 500))
+        await new Promise(resolve => setTimeout(resolve, index * 300))
         try {
           const data = await this.binance.getKlines(
             pairConfig.symbol,
             '1h',
-            500
+            500,
+            allPrices[pairConfig.symbol] || undefined
           )
           if (data && data.length > 0) {
             pairData.set(pairConfig.symbol, data)
@@ -161,9 +166,9 @@ export class TradingBot {
 
     console.log(`Generated ${signals.length} signals`)
 
-    // Step 3: Execute trades based on signals
+    // Step 3: Execute trades based on signals (pass real-time prices!)
     for (const signal of signals) {
-      await this.processSignal(signal, pairData.get(signal.symbol))
+      await this.processSignal(signal, pairData.get(signal.symbol), allPrices[signal.symbol])
     }
 
     // Step 4: Check SL/TP for existing positions
@@ -199,7 +204,7 @@ export class TradingBot {
   }
 
   // Process a single signal and execute if appropriate
-  private async processSignal(signal: Signal, priceData?: PriceData[]): Promise<void> {
+  private async processSignal(signal: Signal, priceData?: PriceData[], currentPrice?: number): Promise<void> {
     const canOpen = this.riskMgr.canOpenPosition(signal.symbol, signal.confidence)
 
     if (!canOpen.allowed) {
@@ -214,9 +219,9 @@ export class TradingBot {
 
     console.log(`AI Signal: BUY ${signal.symbol} (confidence: ${signal.confidence})`)
 
-    // Calculate position size
-    const currentPrice = priceData ? priceData[priceData.length - 1].close : signal.price
-    const quantity = this.riskMgr.calculatePositionSize(signal.symbol, currentPrice, signal.confidence)
+    // Use currentPrice (real-time from CoinGecko) instead of klines close (may be mock)
+    const execPrice = currentPrice || (priceData ? priceData[priceData.length - 1].close : signal.price)
+    const quantity = this.riskMgr.calculatePositionSize(signal.symbol, execPrice, signal.confidence)
 
     if (quantity <= 0) {
       console.log(`Quantity too small for ${signal.symbol}`)
@@ -258,7 +263,7 @@ export class TradingBot {
     } catch (error) {
       console.error(`Real trading failed (likely geo-block), using mock execution: ${signal.symbol}`)
       // Mock execution fallback when Bybit/Binance geo-blocked from Vercel
-      const mockPrice = currentPrice.toString()
+      const mockPrice = execPrice.toString()
       console.log(`SIMULATED BUY: ${signal.symbol} x ${formattedQty} @ ${mockPrice}`)
 
       // Open position in risk manager with mock order data

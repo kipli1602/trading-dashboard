@@ -122,7 +122,7 @@ class MockBinanceAPI {
     }
   }
 
-  async getKlines(symbol: string, interval: string, limit: number = 500): Promise<PriceData[]> {
+  async getKlines(symbol: string, interval: string, limit: number = 500, realPrice?: number): Promise<PriceData[]> {
     return generateMockKlines(symbol, interval, limit)
   }
 

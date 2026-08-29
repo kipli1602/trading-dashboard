@@ -121,7 +121,8 @@ class KuCoinAPI {
   }
 
   // Get klines (1H candles)
-  async getKlines(symbol: string, interval: string = '3600', limit: number = 200): Promise<PriceData[]> {
+  // realPrice: fallback base price from CoinGecko (prevents random mock prices)
+  async getKlines(symbol: string, interval: string = '3600', limit: number = 200, realPrice?: number): Promise<PriceData[]> {
     const kcsymbol = PAIR_MAP[symbol] || symbol
     // Convert interval: '3600' → '1H', '60' → '1m', '86400' → '1D'
     const kctype = this.intervalToKctype(interval)
@@ -141,8 +142,8 @@ class KuCoinAPI {
       }
       throw new Error('No klines data returned')
     } catch (e) {
-      // Fallback: CoinGecko OHLC
-      return this.coingeckoOHLC(symbol)
+       // Fallback: CoinGecko OHLC (pass realPrice so mock fallback is correct)
+      return this.coingeckoOHLC(symbol, realPrice)
     }
   }
 
@@ -162,13 +163,13 @@ class KuCoinAPI {
     return map[interval] || '1H'
   }
 
-  async coingeckoOHLC(symbol: string): Promise<PriceData[]> {
+  async coingeckoOHLC(symbol: string, realPrice?: number): Promise<PriceData[]> {
     const coinId = this.COINGECKO_IDS[symbol]
     if (!coinId) throw new Error(`No CoinGecko mapping for ${symbol}`)
     try {
       const res = await fetch(`https://api.coingecko.com/api/v3/coins/${coinId}/ohlc?vs_currency=usd&days=7`)
       const data = await res.json() as any[]
-      if (!Array.isArray(data) || data.length < 20) return this.mockKlines(symbol)
+      if (!Array.isArray(data) || data.length < 20) return this.mockKlines(symbol, 200, realPrice || 0)
 
       return data.map((candle: any[]) => ({
         timestamp: candle[0],
@@ -179,7 +180,7 @@ class KuCoinAPI {
         volume: 0,
       })).reverse()
     } catch {
-      return this.mockKlines(symbol)
+      return this.mockKlines(symbol, 200, realPrice || 0)
     }
   }
 

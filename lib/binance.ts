@@ -86,7 +86,7 @@ class BinanceAPI {
   }
 
   // Get klines/candlestick data
-  async getKlines(symbol: string, interval: string, limit: number = 500): Promise<PriceData[]> {
+  async getKlines(symbol: string, interval: string, limit: number = 500, realPrice?: number): Promise<PriceData[]> {
     const res = await axios.get(`${this.baseURL}/api/v3/klines`, {
       params: { symbol, interval, limit },
     })
