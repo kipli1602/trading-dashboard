@@ -58,6 +58,18 @@ class KuCoinAPI {
       .digest('base64')
   }
 
+  // Authenticated fetch — routes through proxy if configured (for geo-block bypass)
+  private async authFetch(url: string, options: RequestInit = {}): Promise<Response> {
+    const proxyUrl = process.env.KUCOIN_PROXY_URL
+    if (proxyUrl) {
+      // Route through proxy: proxy appends ?path=/api/v1/... and forwards KC-API headers
+      const urlObj = new URL(url)
+      const proxyTarget = `${proxyUrl}?path=${encodeURIComponent(urlObj.pathname + urlObj.search)}`
+      return fetch(proxyTarget, options)
+    }
+    return fetch(url, options)
+  }
+
   // Get auth headers for KuCoin API
   // V3 keys auth = v1 style: no KEY-VERSION, plaintext passphrase, raw secret
   private async getAuthHeaders(method: string, path: string, body: string = ''): Promise<Record<string, string>> {
@@ -305,7 +317,7 @@ class KuCoinAPI {
       const body = JSON.stringify(orderData)
       const headers = await this.getAuthHeaders('POST', path, body)
 
-      const res = await fetch(`${BASE_URL}${path}`, {
+      const res = await this.authFetch(`${BASE_URL}${path}`, {
         method: 'POST',
         headers,
         body,
@@ -357,7 +369,7 @@ class KuCoinAPI {
     if (this.apiKey && this.apiSecret && this.passphrase) {
       const path = `/api/v1/orders/${orderId}`
       const headers = await this.getAuthHeaders('DELETE', path)
-      const res = await fetch(`${BASE_URL}${path}`, { method: 'DELETE', headers })
+      const res = await this.authFetch(`${BASE_URL}${path}`, { method: 'DELETE', headers })
       const data = await res.json()
       return { symbol, orderId, status: 'CANCELED', ...data }
     }
@@ -369,7 +381,7 @@ class KuCoinAPI {
     if (this.apiKey && this.apiSecret && this.passphrase) {
       const path = '/api/v1/accounts'
       const headers = await this.getAuthHeaders('GET', path)
-      const res = await fetch(`${BASE_URL}${path}`, { headers })
+      const res = await this.authFetch(`${BASE_URL}${path}`, { headers })
       const data = await res.json()
       if (data.code === '200000' && Array.isArray(data.data)) {
         const balance: Record<string, number> = { USDT: 0 }
