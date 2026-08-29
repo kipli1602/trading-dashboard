@@ -230,9 +230,9 @@ class KuCoinAPI {
     try {
       const res = await fetch(`${BASE_URL}/api/v1/timestamp`)
       const data = await res.json()
-      return data.data ? Math.floor(data.data / 1000) : Math.floor(Date.now() / 1000)
+      return data.data || Date.now()
     } catch {
-      return Math.floor(Date.now() / 1000)
+      return Date.now()
     }
   }
 
