@@ -57,16 +57,15 @@ class KuCoinAPI {
       .digest('base64')
   }
 
-  // Get auth headers for KuCoin API
+  // Get auth headers for KuCoin API (v2 = plaintext passphrase)
   private async getAuthHeaders(method: string, path: string, body: string = ''): Promise<Record<string, string>> {
     const ts = (await this.getServerTime()).toString()
     const sig = await this.sign(ts, method, path, body)
-    const pass = await this.encryptPassphrase(ts)
     return {
       'KC-API-KEY': this.apiKey,
       'KC-API-SIGN': sig,
       'KC-API-TIMESTAMP': ts,
-      'KC-API-PASSPHRASE': pass,
+      'KC-API-PASSPHRASE': this.passphrase, // v2 = plaintext, no encryption
       'KC-API-KEY-VERSION': '2',
       'Content-Type': 'application/json',
     }
@@ -341,20 +340,9 @@ class KuCoinAPI {
   // Cancel order
   async cancelOrder(symbol: string, orderId: number | string): Promise<any> {
     if (this.apiKey && this.apiSecret && this.passphrase) {
-      const ts = (await this.getServerTime()).toString()
-      const path = `/api/v1/orders/{orderId}`
-      const sig = await this.sign(ts, 'DELETE', path)
-      const pass = await this.encryptPassphrase(ts)
-      const res = await fetch(`${BASE_URL}${path}`, {
-        method: 'DELETE',
-        headers: {
-          'KC-API-KEY': this.apiKey,
-          'KC-API-SIGN': sig,
-          'KC-API-TIMESTAMP': ts,
-          'KC-API-PASSPHRASE': pass,
-          'KC-API-KEY-VERSION': '2',
-        },
-      })
+      const path = `/api/v1/orders/${orderId}`
+      const headers = await this.getAuthHeaders('DELETE', path)
+      const res = await fetch(`${BASE_URL}${path}`, { method: 'DELETE', headers })
       const data = await res.json()
       return { symbol, orderId, status: 'CANCELED', ...data }
     }
@@ -364,19 +352,9 @@ class KuCoinAPI {
   // Get balance — SUM all account types (main + trade + margin + futures)
   async getBalance(): Promise<Record<string, number>> {
     if (this.apiKey && this.apiSecret && this.passphrase) {
-      const ts = (await this.getServerTime()).toString()
       const path = '/api/v1/accounts'
-      const sig = await this.sign(ts, 'GET', path)
-      const pass = await this.encryptPassphrase(ts)
-      const res = await fetch(`${BASE_URL}${path}`, {
-        headers: {
-          'KC-API-KEY': this.apiKey,
-          'KC-API-SIGN': sig,
-          'KC-API-TIMESTAMP': ts,
-          'KC-API-PASSPHRASE': pass,
-          'KC-API-KEY-VERSION': '2',
-        },
-      })
+      const headers = await this.getAuthHeaders('GET', path)
+      const res = await fetch(`${BASE_URL}${path}`, { headers })
       const data = await res.json()
       if (data.code === '200000' && Array.isArray(data.data)) {
         const balance: Record<string, number> = { USDT: 0 }
