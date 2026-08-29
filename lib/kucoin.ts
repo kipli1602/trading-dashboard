@@ -57,16 +57,32 @@ class KuCoinAPI {
       .digest('base64')
   }
 
-  // Get auth headers for KuCoin API (v2 = plaintext passphrase)
+  // Get auth headers for KuCoin API
+  // v2 = plaintext passphrase; v1 = encrypted
   private async getAuthHeaders(method: string, path: string, body: string = ''): Promise<Record<string, string>> {
     const ts = (await this.getServerTime()).toString()
     const sig = await this.sign(ts, method, path, body)
+    // Try v2 first (plaintext passphrase)
     return {
       'KC-API-KEY': this.apiKey,
       'KC-API-SIGN': sig,
       'KC-API-TIMESTAMP': ts,
-      'KC-API-PASSPHRASE': this.passphrase, // v2 = plaintext, no encryption
+      'KC-API-PASSPHRASE': this.passphrase,
       'KC-API-KEY-VERSION': '2',
+      'Content-Type': 'application/json',
+    }
+  }
+
+  // For v1 keys: encrypted passphrase
+  private async getAuthHeadersV1(method: string, path: string, body: string = ''): Promise<Record<string, string>> {
+    const ts = (await this.getServerTime()).toString()
+    const sig = await this.sign(ts, method, path, body)
+    const pass = await this.encryptPassphrase(ts)
+    return {
+      'KC-API-KEY': this.apiKey,
+      'KC-API-SIGN': sig,
+      'KC-API-TIMESTAMP': ts,
+      'KC-API-PASSPHRASE': pass,
       'Content-Type': 'application/json',
     }
   }

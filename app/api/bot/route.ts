@@ -43,42 +43,53 @@ export async function GET(req: NextRequest) {
         })
 
       case 'test-balance':
-        // Test KuCoin balance fetch directly
+        // Test KuCoin balance with BOTH v1 (encrypted) and v2 (plaintext)
         const KuCoinAPI = (await import('@/lib/kucoin')).default
         const kc = new KuCoinAPI(
           process.env.KUCOIN_API_KEY || '',
           process.env.KUCOIN_API_SECRET || '',
           process.env.KUCOIN_PASSPHRASE || ''
         )
+        const results: any = {}
+        const ts2 = (await kc as any).getServerTime()
+        const ts = ts2.toString()
+        const { default: crypto } = await import('crypto')
+        
+        // Try v2: plaintext passphrase
         try {
-          const bal = await kc.getBalance()
-          const rawAccounts = await (async () => {
-            const ts = Math.floor(Date.now() / 1000).toString()
-            const { default: crypto } = await import('crypto')
-            const sig = crypto.createHmac('sha256', process.env.KUCOIN_API_SECRET!).update(ts + 'GET' + '/api/v1/accounts').digest('base64')
-            const passHash = crypto.createHmac('sha256', process.env.KUCOIN_API_SECRET!).update(ts + (process.env.KUCOIN_PASSPHRASE || '')).digest('base64')
-            const r = await fetch('https://api.kucoin.com/api/v1/accounts', {
-              headers: {
-                'KC-API-KEY': process.env.KUCOIN_API_KEY!,
-                'KC-API-SIGN': sig,
-                'KC-API-TIMESTAMP': ts,
-                'KC-API-PASSPHRASE': passHash,
-                'KC-API-KEY-VERSION': '2',
-              }
-            })
-            return await r.json()
-          })()
-          return NextResponse.json({
-            balance: bal,
-            rawAccountsCode: rawAccounts.code,
-            rawAccountsMsg: rawAccounts.msg,
-            rawAccountsData: rawAccounts.data?.map((a: any) => ({
-              currency: a.currency, type: a.type, balance: a.balance, available: a.available, holds: a.holds
-            })) || rawAccounts.data
+          const path2 = '/api/v1/accounts'
+          const sig2 = crypto.createHmac('sha256', process.env.KUCOIN_API_SECRET!).update(ts + 'GET' + path2).digest('base64')
+          const r2 = await fetch(`https://api.kucoin.com${path2}`, {
+            headers: {
+              'KC-API-KEY': process.env.KUCOIN_API_KEY!,
+              'KC-API-SIGN': sig2,
+              'KC-API-TIMESTAMP': ts,
+              'KC-API-PASSPHRASE': process.env.KUCOIN_PASSPHRASE!,
+              'KC-API-KEY-VERSION': '2',
+            }
           })
-        } catch (e: any) {
-          return NextResponse.json({ error: e.message, stack: e.stack?.substring(0, 200) })
-        }
+          const d2 = await r2.json()
+          results.v2 = { code: d2.code, msg: d2.msg, accounts: d2.data?.slice(0,3) }
+        } catch (e: any) { results.v2 = { error: e.message } }
+        
+        // Try v1: encrypted passphrase
+        try {
+          const path1 = '/api/v1/accounts'
+          const sig1 = crypto.createHmac('sha256', process.env.KUCOIN_API_SECRET!).update(ts + 'GET' + path1).digest('base64')
+          const pass1 = crypto.createHmac('sha256', process.env.KUCOIN_API_SECRET!).update(ts + (process.env.KUCOIN_PASSPHRASE || '')).digest('base64')
+          const r1 = await fetch(`https://api.kucoin.com${path1}`, {
+            headers: {
+              'KC-API-KEY': process.env.KUCOIN_API_KEY!,
+              'KC-API-SIGN': sig1,
+              'KC-API-TIMESTAMP': ts,
+              'KC-API-PASSPHRASE': pass1,
+            }
+          })
+          const d1 = await r1.json()
+          results.v1 = { code: d1.code, msg: d1.msg, accounts: d1.data?.slice(0,3) }
+        } catch (e: any) { results.v1 = { error: e.message } }
+        
+        return NextResponse.json(results)
 
       case 'pair-stats':
         // Get price + 24h stats for all 9 pairs
