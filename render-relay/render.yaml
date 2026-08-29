@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: kucoin-relay
+    runtime: node
+    region: singapore
+    buildCommand: npm ci
+    startCommand: npm start
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+    autoDeploy: true
+    healthCheckPath: /health
