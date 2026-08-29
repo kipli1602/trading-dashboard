@@ -211,8 +211,8 @@ class MockBinanceAPI {
     this.mockBalance[asset] = amount
   }
 
-  getBalance(asset: string): number {
-    return this.mockBalance[asset] || 0
+  async getBalance(): Promise<Record<string, number>> {
+    return { ...this.mockBalance }
   }
 }
 

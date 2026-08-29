@@ -12,6 +12,7 @@ export class RiskManager {
   private tradeHistory: Trade[]
   private dailyPnL: number
   private lastResetDate: string
+  private balance: number = 10000 // Default starting balance, updated from exchange
 
   constructor(config: BotConfig) {
     this.config = config
@@ -19,6 +20,16 @@ export class RiskManager {
     this.tradeHistory = []
     this.dailyPnL = 0
     this.lastResetDate = new Date().toISOString().split('T')[0]
+  }
+
+  // Update balance from real exchange balance
+  setBalance(balance: number): void {
+    this.balance = balance
+    console.log(`[RiskManager] Balance updated: $${balance.toLocaleString()}`)
+  }
+
+  getBalance(): number {
+    return this.balance
   }
 
   // Check if new position is allowed based on risk rules
@@ -54,30 +65,29 @@ export class RiskManager {
     return { allowed: true, reason: 'OK' }
   }
 
-  // Calculate position size based on confidence and risk rules
+  // Calculate position size based on real balance and confidence
   calculatePositionSize(symbol: string, currentPrice: number, confidence: number): number {
     const pairConfig = this.config.enabledPairs.find(p => p.symbol === symbol)
     if (!pairConfig) {
       return 0
     }
 
-    // Base position size from pair config
-    let positionSize = pairConfig.maxPositionSize
-
-    // Scale by confidence
-    positionSize *= confidence
+    // Base position size = 5% of real balance, scaled by confidence
+    // Capped at pair's maxPositionSize (only relevant for large balances)
+    let positionValue = Math.min(this.balance * 0.05 * confidence * 2, pairConfig.maxPositionSize)
 
     // Scale by daily PnL (reduce if losing)
     if (this.dailyPnL < 0) {
       const lossRatio = Math.min(1, Math.abs(this.dailyPnL) / this.config.dailyLossLimit)
-      positionSize *= (1 - lossRatio * 0.5)
+      positionValue *= (1 - lossRatio * 0.5)
     }
 
-    // Ensure within max position per pair
-    positionSize = Math.min(positionSize, pairConfig.maxPositionSize)
+    // Ensure minimum position value (at least $0.50 or current balance * 0.5%)
+    const minValue = Math.min(this.balance * 0.005, 5)
+    positionValue = Math.max(positionValue, minValue)
 
     // Convert to quantity
-    const quantity = Math.floor((positionSize / currentPrice) * 1000000) / 1000000
+    const quantity = Math.floor((positionValue / currentPrice) * 1000000) / 1000000
     return quantity
   }
 
@@ -191,7 +201,7 @@ export class RiskManager {
   // Get current portfolio stats
   getPortfolioStats(): PortfolioStats {
     const openPositions = Array.from(this.positions.values()).filter(p => p.status === 'OPEN')
-    const totalValue = openPositions.reduce((sum, p) => sum + p.currentPnL + (openPositions.length > 0 ? 0 : 0), 0)
+    const totalPnL = openPositions.reduce((sum, p) => sum + p.currentPnL, 0)
 
     const closedTrades = this.tradeHistory
     const wins = closedTrades.filter(t => t.pnl > 0)
@@ -200,13 +210,14 @@ export class RiskManager {
 
     const avgWin = wins.length > 0 ? wins.reduce((s, t) => s + t.pnlPercent, 0) / wins.length : 0
     const avgLoss = losses.length > 0 ? Math.abs(losses.reduce((s, t) => s + t.pnlPercent, 0) / losses.length) : 0
+    const initialBalance = this.balance // Current real balance
 
     return {
-      totalValue: totalValue + 500000, // initial capital
-      totalPnL: this.tradeHistory.reduce((sum, t) => sum + t.pnl, 0),
-      totalPnLPercent: ((totalValue + 500000 - 500000) / 500000) * 100,
+      totalValue: this.balance + totalPnL,
+      totalPnL: closedTrades.reduce((sum, t) => sum + t.pnl, 0) + totalPnL,
+      totalPnLPercent: initialBalance > 0 ? ((totalPnL / initialBalance) * 100) : 0,
       dayChange: this.dailyPnL,
-      dayChangePercent: (this.dailyPnL / 500000) * 100,
+      dayChangePercent: initialBalance > 0 ? (this.dailyPnL / initialBalance) * 100 : 0,
       activePositions: openPositions.length,
       totalTrades: closedTrades.length,
       winRate: parseFloat(winRate.toFixed(2)),

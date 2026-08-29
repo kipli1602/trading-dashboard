@@ -59,6 +59,16 @@ class BinanceAPI {
     return account.balances.filter((b: any) => parseFloat(b.free) > 0 || parseFloat(b.locked) > 0)
   }
 
+  // Get balance as Record<string, number>
+  async getBalance(): Promise<Record<string, number>> {
+    const balances = await this.getBalances()
+    const result: Record<string, number> = {}
+    for (const b of balances) {
+      result[b.asset] = parseFloat(b.free || '0')
+    }
+    return result
+  }
+
   // Get current price for a symbol
   async getPrice(symbol: string): Promise<number> {
     const res = await axios.get(`${this.baseURL}/api/v3/ticker/price`, {

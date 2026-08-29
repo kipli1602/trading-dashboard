@@ -103,12 +103,13 @@ export async function GET(req: NextRequest) {
             timestamp: new Date().toISOString(),
             cycle: cronResult,
             portfolio: cronStats,
+            balance: riskManager.getBalance(),
             openPositions: Array.from(cronPositions.entries()).map(([sym, pos]) => ({
               ...pos,
               symbol: pos.symbol || sym,
             })),
             signalCount: cronResult.signals.length,
-            pairCount: cronResult.signals.length, // signals processed
+            pairCount: cronResult.pairCount,
           })
         } catch (err: any) {
           return NextResponse.json({ success: false, error: err.message, stack: err.stack })

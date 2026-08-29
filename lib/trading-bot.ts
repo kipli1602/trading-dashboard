@@ -126,9 +126,18 @@ export class TradingBot {
     console.log(`[${new Date().toISOString()}] Running trading cycle...`)
     const errors: string[] = []
 
-    // Step 0: Fetch real-time prices FIRST (single CoinGecko request — works from US)
-    // CRITICAL: this ensures order execution uses REAL prices, not mock klines
+    // Step 0: Fetch real-time prices + balance from exchange (KuCoin/Bybit works from US)
     const allPrices = await this.binance.getAllPrices()
+
+    // Fetch real USDT balance from exchange
+    try {
+      const balance = await this.binance.getBalance()
+      const usdtBalance = balance.USDT || 10000
+      this.riskMgr.setBalance(usdtBalance)
+      console.log(`Exchange balance: $${Number(usdtBalance).toLocaleString()}`)
+    } catch (e) {
+      console.error('[Balance] Failed to fetch exchange balance, using last known:', e)
+    }
 
     // Step 1: Fetch klines for technical analysis (pass realPrice as fallback basis)
     const pairData = new Map<string, PriceData[]>()
