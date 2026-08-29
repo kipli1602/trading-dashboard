@@ -241,34 +241,19 @@ export async function POST(req: NextRequest) {
       case 'get-config':
         return NextResponse.json({ config: tradingBot.getConfig() })
 
+      case 'sync-portfolio':
+        if (body.portfolio) cachedPortfolio = body.portfolio
+        if (body.openPositions) cachedPositions = body.openPositions
+        if (body.balance !== undefined) cachedBalance = body.balance
+        return NextResponse.json({ 
+          success: true, 
+          message: 'Portfolio synced',
+          balance: cachedBalance,
+        })
+
       default:
         return NextResponse.json({ error: 'Unknown action' }, { status: 400 })
     }
-  } catch (e: any) {
-    return NextResponse.json({ error: e.message }, { status: 500 })
-  }
-}
-
-// Sync endpoint: local bot pushes portfolio/positions to Vercel cache
-// Called by auto-cron.bat when running from local machine (with VPN)
-export async function PUT(req: NextRequest) {
-  try {
-    const body = await req.json()
-    const { action, portfolio, openPositions, balance } = body
-
-    if (action === 'sync-portfolio') {
-      if (portfolio) cachedPortfolio = portfolio
-      if (openPositions) cachedPositions = openPositions
-      if (balance !== undefined) cachedBalance = balance
-      return NextResponse.json({ 
-        success: true, 
-        message: 'Portfolio synced',
-        balance: cachedBalance,
-        portfolio: cachedPortfolio ? 'set' : 'none',
-      })
-    }
-
-    return NextResponse.json({ error: 'Unknown action' }, { status: 400 })
   } catch (e: any) {
     return NextResponse.json({ error: e.message }, { status: 500 })
   }

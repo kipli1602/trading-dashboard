@@ -31,8 +31,8 @@ async function runLocalCron() {
     // Sync ke Vercel agar browser tampilkan data real
     if (portfolio || balance !== undefined) {
       try {
-        await fetch(`${VERCEL_API}?action=noop`, { // trigger PUT handler
-          method: 'PUT',
+        await fetch(`${VERCEL_API}`, {
+          method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             action: 'sync-portfolio',
