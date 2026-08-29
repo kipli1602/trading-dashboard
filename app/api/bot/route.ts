@@ -43,52 +43,20 @@ export async function GET(req: NextRequest) {
         })
 
       case 'test-balance':
-        // Test KuCoin balance with BOTH v1 (encrypted) and v2 (plaintext)
+        // Test KuCoin v3 auth directly
         const KuCoinAPI = (await import('@/lib/kucoin')).default
         const kc = new KuCoinAPI(
           process.env.KUCOIN_API_KEY || '',
           process.env.KUCOIN_API_SECRET || '',
           process.env.KUCOIN_PASSPHRASE || ''
         )
-        const results: any = {}
-        const ts2 = (await kc as any).getServerTime()
-        const ts = ts2.toString()
-        const { default: crypto } = await import('crypto')
-        
-        // Try v2: plaintext passphrase
+        const results: any = { key: process.env.KUCOIN_API_KEY?.substring(0,8) + '...', version: 'v3' }
         try {
-          const path2 = '/api/v1/accounts'
-          const sig2 = crypto.createHmac('sha256', process.env.KUCOIN_API_SECRET!).update(ts + 'GET' + path2).digest('base64')
-          const r2 = await fetch(`https://api.kucoin.com${path2}`, {
-            headers: {
-              'KC-API-KEY': process.env.KUCOIN_API_KEY!,
-              'KC-API-SIGN': sig2,
-              'KC-API-TIMESTAMP': ts,
-              'KC-API-PASSPHRASE': process.env.KUCOIN_PASSPHRASE!,
-              'KC-API-KEY-VERSION': '2',
-            }
-          })
-          const d2 = await r2.json()
-          results.v2 = { code: d2.code, msg: d2.msg, accounts: d2.data?.slice(0,3) }
-        } catch (e: any) { results.v2 = { error: e.message } }
-        
-        // Try v1: encrypted passphrase
-        try {
-          const path1 = '/api/v1/accounts'
-          const sig1 = crypto.createHmac('sha256', process.env.KUCOIN_API_SECRET!).update(ts + 'GET' + path1).digest('base64')
-          const pass1 = crypto.createHmac('sha256', process.env.KUCOIN_API_SECRET!).update(ts + (process.env.KUCOIN_PASSPHRASE || '')).digest('base64')
-          const r1 = await fetch(`https://api.kucoin.com${path1}`, {
-            headers: {
-              'KC-API-KEY': process.env.KUCOIN_API_KEY!,
-              'KC-API-SIGN': sig1,
-              'KC-API-TIMESTAMP': ts,
-              'KC-API-PASSPHRASE': pass1,
-            }
-          })
-          const d1 = await r1.json()
-          results.v1 = { code: d1.code, msg: d1.msg, accounts: d1.data?.slice(0,3) }
-        } catch (e: any) { results.v1 = { error: e.message } }
-        
+          const bal = await kc.getBalance()
+          results.balance = bal
+        } catch (e: any) {
+          results.error = e.message
+        }
         return NextResponse.json(results)
 
       case 'pair-stats':
