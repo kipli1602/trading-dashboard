@@ -33,6 +33,13 @@ export async function GET(req: NextRequest) {
           useTestnet: process.env.USE_TESTNET,
           useSandbox: process.env.KUCOIN_SANDBOX !== 'false',
           status: tradingBot.getStatus(),
+          exchangeStatus: await (async () => {
+            const base = process.env.KUCOIN_SANDBOX !== 'false' ? 'https://openapi-sandbox.kucoin.com' : 'https://api.kucoin.com'
+            try {
+              const r = await fetch(`${base}/api/v1/timestamp`, { signal: AbortSignal.timeout(8000) })
+              return { kucoin: r.ok ? 'connected' : `http_${r.status}`, url: base }
+            } catch (e: any) { return { kucoin: 'failed', error: (e.message||'timeout').substring(0,80), url: base } }
+          })(),
         })
 
       case 'pair-stats':
