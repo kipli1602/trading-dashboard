@@ -4,6 +4,11 @@ import { riskManager } from '@/lib/risk-manager'
 import { PAIRS_9 } from '@/lib/config'
 import MockBinanceAPI from '@/lib/binance-mock'
 
+// Cached portfolio data (updated by local cron via sync endpoint)
+let cachedPortfolio: any = null
+let cachedPositions: any = null
+let cachedBalance: number = 0
+
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
   const action = searchParams.get('action')
@@ -118,11 +123,25 @@ export async function GET(req: NextRequest) {
 
       case 'portfolio':
         const stats = riskManager.getPortfolioStats()
+        // If on Vercel (balance=0, geo-blocked), fall back to cached data
+        if (stats.totalValue === 0 && cachedPortfolio) {
+          return NextResponse.json(cachedPortfolio)
+        }
+        if (stats.totalValue === 0 && cachedBalance > 0) {
+          return NextResponse.json({
+            ...stats,
+            totalValue: cachedBalance + (cachedPortfolio?.totalPnL || 0),
+            balance: cachedBalance,
+          })
+        }
         return NextResponse.json(stats)
 
       case 'positions':
-        const allPositions = riskManager.getAllPositions()
         const openPositions = riskManager.getOpenPositions()
+        if (openPositions.size === 0 && cachedPositions) {
+          return NextResponse.json(cachedPositions)
+        }
+        const allPositions = riskManager.getAllPositions()
         return NextResponse.json({
           positions: allPositions,
           openPositions: Array.from(openPositions.entries()).map(([_sym, pos]) => ({
@@ -225,6 +244,31 @@ export async function POST(req: NextRequest) {
       default:
         return NextResponse.json({ error: 'Unknown action' }, { status: 400 })
     }
+  } catch (e: any) {
+    return NextResponse.json({ error: e.message }, { status: 500 })
+  }
+}
+
+// Sync endpoint: local bot pushes portfolio/positions to Vercel cache
+// Called by auto-cron.bat when running from local machine (with VPN)
+export async function PUT(req: NextRequest) {
+  try {
+    const body = await req.json()
+    const { action, portfolio, openPositions, balance } = body
+
+    if (action === 'sync-portfolio') {
+      if (portfolio) cachedPortfolio = portfolio
+      if (openPositions) cachedPositions = openPositions
+      if (balance !== undefined) cachedBalance = balance
+      return NextResponse.json({ 
+        success: true, 
+        message: 'Portfolio synced',
+        balance: cachedBalance,
+        portfolio: cachedPortfolio ? 'set' : 'none',
+      })
+    }
+
+    return NextResponse.json({ error: 'Unknown action' }, { status: 400 })
   } catch (e: any) {
     return NextResponse.json({ error: e.message }, { status: 500 })
   }
