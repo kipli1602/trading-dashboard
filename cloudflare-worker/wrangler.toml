@@ -1,6 +1,4 @@
 name = "kucoin-proxy"
 main = "index.js"
 compatibility_date = "2024-01-01"
-
-[placement]
-mode = "smart"
+workers_dev = true
