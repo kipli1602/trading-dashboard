@@ -1,7 +1,7 @@
 // Local cron runner: runs local cron + syncs result to Vercel
 const fetch = (url, opts) => globalThis.fetch(url, opts);
 
-const LOCAL_API = 'http://localhost:3000/api/bot';
+const LOCAL_API = 'http://localhost:3001/api/bot';
 const VERCEL_API = 'https://trading-dashboard-kipli.vercel.app/api/bot';
 
 async function runLocalCron() {
