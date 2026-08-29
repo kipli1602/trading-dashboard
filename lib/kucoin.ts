@@ -41,14 +41,14 @@ class KuCoinAPI {
   private async sign(timestamp: string, method: string, requestPath: string, body: string = ''): Promise<string> {
     const { default: crypto } = await import('crypto')
     const str_to_sign = timestamp + method.toUpperCase() + requestPath + body
-    // KuCoin v3: raw string secret (UUID format) used directly as HMAC key
+    // KuCoin v3: try both raw string and base64-decoded secret
     return crypto
       .createHmac('sha256', this.apiSecret)
       .update(str_to_sign)
       .digest('base64')
   }
 
-  // KuCoin passphrase: HMAC-SHA256 of timestamp+passphrase, using api_secret
+  // KuCoin v3 passphrase: HMAC-SHA256(timestamp+passphrase, raw secret string)
   private async encryptPassphrase(timestamp: string): Promise<string> {
     const { default: crypto } = await import('crypto')
     const str_to_sign = timestamp + this.passphrase
@@ -59,14 +59,16 @@ class KuCoinAPI {
   }
 
   // Get auth headers for KuCoin API v3
+  // v3: encrypted passphrase + base64-decoded secret for signature
   private async getAuthHeaders(method: string, path: string, body: string = ''): Promise<Record<string, string>> {
     const ts = (await this.getServerTime()).toString()
     const sig = await this.sign(ts, method, path, body)
+    const pass = await this.encryptPassphrase(ts)
     return {
       'KC-API-KEY': this.apiKey,
       'KC-API-SIGN': sig,
       'KC-API-TIMESTAMP': ts,
-      'KC-API-PASSPHRASE': this.passphrase, // v3 = plaintext passphrase
+      'KC-API-PASSPHRASE': pass,
       'KC-API-KEY-VERSION': '3',
       'Content-Type': 'application/json',
     }

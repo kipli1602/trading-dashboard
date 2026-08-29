@@ -43,21 +43,54 @@ export async function GET(req: NextRequest) {
         })
 
       case 'test-balance':
-        // Test KuCoin v3 auth directly
-        const KuCoinAPI = (await import('@/lib/kucoin')).default
-        const kc = new KuCoinAPI(
-          process.env.KUCOIN_API_KEY || '',
-          process.env.KUCOIN_API_SECRET || '',
-          process.env.KUCOIN_PASSPHRASE || ''
-        )
-        const results: any = { key: process.env.KUCOIN_API_KEY?.substring(0,8) + '...', version: 'v3' }
-        try {
-          const bal = await kc.getBalance()
-          results.balance = bal
-        } catch (e: any) {
-          results.error = e.message
+        // Test ALL KuCoin auth combos at once
+        const { default: crypto2 } = await import('crypto')
+        const AK = process.env.KUCOIN_API_KEY!
+        const AS = process.env.KUCOIN_API_SECRET!
+        const AP = process.env.KUCOIN_PASSPHRASE!
+        const path = '/api/v1/accounts'
+        
+        // Get timestamp from KuCoin
+        const tsRes = await fetch('https://api.kucoin.com/api/v1/timestamp')
+        const tsData = await tsRes.json()
+        const ts = (tsData.data || Date.now()).toString()
+        
+        const combos: Record<string, any> = {}
+        
+        // Helper: test one combo
+        async function testAuth(label: string, version: string|null, encryptedPass: boolean, useB64: boolean) {
+          const hmacKey: any = useB64 ? Buffer.from(AS, 'base64') : AS
+          const sig = crypto2.createHmac('sha256', hmacKey).update(ts + 'GET' + path).digest('base64')
+          const pass = encryptedPass 
+            ? crypto2.createHmac('sha256', hmacKey).update(ts + AP).digest('base64')
+            : AP
+          const headers: Record<string,string> = {
+            'KC-API-KEY': AK,
+            'KC-API-SIGN': sig,
+            'KC-API-TIMESTAMP': ts,
+            'KC-API-PASSPHRASE': pass,
+          }
+          if (version) headers['KC-API-KEY-VERSION'] = version
+          try {
+            const r = await fetch(`https://api.kucoin.com${path}`, { headers })
+            const d = await r.json()
+            combos[label] = { code: d.code, msg: d.msg, usdt: d.data?.find((a:any)=>a.currency==='USDT')?.available }
+          } catch(e:any) { combos[label] = { error: e.message } }
         }
-        return NextResponse.json(results)
+        
+        const rawSecret = AS
+        const b64Secret = Buffer.from(AS, 'base64')
+        
+        await testAuth('v1_encrypted_raw',    null, true,  false)
+        await testAuth('v1_plaintext_raw',    null, false, false)
+        await testAuth('v2_encrypted_raw',    '2', true,  false)
+        await testAuth('v2_plaintext_raw',    '2', false, false)
+        await testAuth('v3_encrypted_raw',    '3', true,  false)
+        await testAuth('v3_plaintext_raw',    '3', false, false)
+        await testAuth('v3_encrypted_b64',    '3', true,  true)
+        await testAuth('v3_plaintext_b64',    '3', false, true)
+        
+        return NextResponse.json({ ts, combos })
 
       case 'pair-stats':
         // Get price + 24h stats for all 9 pairs
