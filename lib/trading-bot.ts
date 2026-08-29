@@ -174,15 +174,10 @@ export class TradingBot {
     // Step 4: Check SL/TP for existing positions
     await this.checkSLTP()
 
-    // Step 5: Get current prices & update positions
+    // Step 5: Use allPrices from Step 0 (avoid individual getPrice which may hit mock fallback)
     const currentPrices = new Map<string, number>()
-    for (const pairConfig of this.config.enabledPairs) {
-      try {
-        const price = await this.binance.getPrice(pairConfig.symbol)
-        currentPrices.set(pairConfig.symbol, price)
-      } catch (e) {
-        console.error(`Failed to get price for ${pairConfig.symbol}`, e)
-      }
+    for (const [symbol, price] of Object.entries(allPrices)) {
+      currentPrices.set(symbol, price)
     }
 
     // Update positions with current prices

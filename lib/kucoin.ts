@@ -98,7 +98,8 @@ class KuCoinAPI {
         if (!price) throw new Error(`CoinGecko price fetch failed for ${symbol}`)
         return price
       } catch (e2) {
-        return this.mockBalance.USDT // fallback to mock price
+        // Don't return mock price ($10k) — throw so caller uses getAllPrices()
+        throw new Error(`All price sources failed for ${symbol}`)
       }
     }
   }
