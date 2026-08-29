@@ -361,7 +361,7 @@ class KuCoinAPI {
     return { symbol, orderId, status: 'CANCELED' }
   }
 
-  // Get balance
+  // Get balance — SUM all account types (main + trade + margin + futures)
   async getBalance(): Promise<Record<string, number>> {
     if (this.apiKey && this.apiSecret && this.passphrase) {
       const ts = (await this.getServerTime()).toString()
@@ -381,12 +381,17 @@ class KuCoinAPI {
       if (data.code === '200000' && Array.isArray(data.data)) {
         const balance: Record<string, number> = { USDT: 0 }
         for (const account of data.data) {
-          balance[account.currency.toUpperCase()] = parseFloat(account.available || '0')
+          const currency = account.currency.toUpperCase()
+          // SUM across all account types (main + trade + margin + futures)
+          balance[currency] = (balance[currency] || 0) + parseFloat(account.available || '0')
         }
+        console.log(`[KuCoin] Balance fetched: USDT=${balance.USDT}`)
         return balance
       }
-      throw new Error('Balance fetch failed')
+      console.error(`[KuCoin] Balance API error:`, data.msg || JSON.stringify(data).substring(0, 200))
+      throw new Error(`Balance fetch failed: ${data.msg || data.code}`)
     }
+    throw new Error('No KuCoin API credentials')
     return this.mockBalance
   }
 }

@@ -132,11 +132,13 @@ export class TradingBot {
     // Fetch real USDT balance from exchange
     try {
       const balance = await this.binance.getBalance()
-      const usdtBalance = balance.USDT || 10000
+      const usdtBalance = balance.USDT || 0
       this.riskMgr.setBalance(usdtBalance)
-      console.log(`Exchange balance: $${Number(usdtBalance).toLocaleString()}`)
-    } catch (e) {
-      console.error('[Balance] Failed to fetch exchange balance, using last known:', e)
+      console.log(`Exchange USDT balance: $${Number(usdtBalance).toLocaleString(undefined, {minimumFractionDigits: 2})}`)
+    } catch (e: any) {
+      console.error('[Balance] Failed to fetch exchange balance:', e.message?.substring(0, 100))
+      // Don't use mock fallback — set to 0 to prevent fake trading
+      this.riskMgr.setBalance(0)
     }
 
     // Step 1: Fetch klines for technical analysis (pass realPrice as fallback basis)
